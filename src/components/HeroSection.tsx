@@ -2,17 +2,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Shield, Zap, Globe, ArrowRight } from "lucide-react";
 import cosmicBackground from "@/assets/cosmic-background.jpg";
-
 export const HeroSection = () => {
-  return (
-    <div 
-      className="relative min-h-[400px] flex items-center justify-center overflow-hidden rounded-2xl"
-      style={{
-        backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url(${cosmicBackground})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center'
-      }}
-    >
+  return <div className="relative min-h-[400px] flex items-center justify-center overflow-hidden rounded-2xl" style={{
+    backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url(${cosmicBackground})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center'
+  }}>
       <div className="absolute inset-0 bg-gradient-background/80"></div>
       
       <div className="relative text-center space-y-6 max-w-4xl mx-auto px-6">
@@ -40,10 +35,7 @@ export const HeroSection = () => {
             <Shield className="w-4 h-4 text-shield-cyan" />
             <span>MEV Protection</span>
           </div>
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-card/20 border border-border/30">
-            <Globe className="w-4 h-4 text-cosmic-secondary" />
-            <span>Cross-Chain</span>
-          </div>
+          
           <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-card/20 border border-border/30">
             <Zap className="w-4 h-4 text-primary" />
             <span>Best Rates</span>
@@ -64,7 +56,8 @@ export const HeroSection = () => {
       
       {/* Animated glow effects */}
       <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-cosmic-primary/20 rounded-full blur-3xl animate-pulse"></div>
-      <div className="absolute bottom-1/4 right-1/4 w-40 h-40 bg-shield-cyan/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
-    </div>
-  );
+      <div className="absolute bottom-1/4 right-1/4 w-40 h-40 bg-shield-cyan/20 rounded-full blur-3xl animate-pulse" style={{
+      animationDelay: '1s'
+    }}></div>
+    </div>;
 };
