@@ -3,6 +3,11 @@ import { useSwapStore } from '@/store/swap';
 import { UnikronApiService } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
+import { usePerformanceMonitor } from '@/hooks/usePerformanceMonitor';
+import { validateAmount } from '@/utils/validation';
+import { AppError, ErrorType, ErrorSeverity } from '@/types/errors';
+import { APP_CONFIG } from '@/constants/app';
 
 export const useSwapQuote = () => {
   const {
@@ -19,11 +24,21 @@ export const useSwapQuote = () => {
   } = useSwapStore();
 
   const { toast } = useToast();
-  const debouncedInputAmount = useDebounce(inputAmount, 500);
+  const { handleError, retryWithHandler, isRetrying } = useErrorHandler();
+  const { measureAsync } = usePerformanceMonitor();
+  const debouncedInputAmount = useDebounce(inputAmount, APP_CONFIG.DEBOUNCE_DELAY);
 
   const fetchQuote = useCallback(async () => {
     if (!inputToken || !outputToken || !debouncedInputAmount || parseFloat(debouncedInputAmount) === 0) {
       setQuote(null);
+      return;
+    }
+
+    // Validate input amount
+    try {
+      validateAmount(debouncedInputAmount);
+    } catch (error) {
+      handleError(error);
       return;
     }
 
@@ -40,16 +55,33 @@ export const useSwapQuote = () => {
         config
       };
 
-      const newQuote = await UnikronApiService.getQuote(chainType, quoteRequest);
+      const newQuote = await measureAsync(
+        'fetchQuote',
+        () => UnikronApiService.getQuote(chainType, quoteRequest),
+        { chainType, inputAmount: debouncedInputAmount }
+      );
+      
       setQuote(newQuote);
     } catch (error) {
       console.error('Failed to fetch quote:', error);
-      setError(error instanceof Error ? error.message : 'Failed to fetch quote');
-      toast({
-        title: "Quote Error",
-        description: "Failed to get swap quote. Please try again.",
-        variant: "destructive",
-      });
+      
+      const appError = error instanceof Error 
+        ? new AppError({
+            type: ErrorType.API_ERROR,
+            severity: ErrorSeverity.HIGH,
+            message: error.message.includes('network') ? 'Network error while fetching quote' : 'Failed to fetch quote',
+            retry: true,
+            metadata: { chainType, inputAmount: debouncedInputAmount }
+          })
+        : new AppError({
+            type: ErrorType.UNKNOWN_ERROR,
+            severity: ErrorSeverity.MEDIUM,
+            message: 'Failed to fetch quote',
+            retry: true,
+          });
+      
+      handleError(appError);
+      setError(appError.message);
     } finally {
       setLoadingQuote(false);
     }
@@ -62,7 +94,8 @@ export const useSwapQuote = () => {
     setQuote,
     setLoadingQuote,
     setError,
-    toast
+    handleError,
+    measureAsync
   ]);
 
   useEffect(() => {
@@ -70,13 +103,16 @@ export const useSwapQuote = () => {
   }, [fetchQuote]);
 
   const refreshQuote = useCallback(() => {
-    fetchQuote();
-  }, [fetchQuote]);
+    retryWithHandler(fetchQuote);
+  }, [fetchQuote, retryWithHandler]);
+
+  const hasValidInputs = !!(inputToken && outputToken && debouncedInputAmount && parseFloat(debouncedInputAmount) > 0);
 
   return {
     quote,
-    isLoadingQuote,
+    isLoadingQuote: isLoadingQuote || isRetrying,
     refreshQuote,
-    hasValidInputs: !!(inputToken && outputToken && debouncedInputAmount && parseFloat(debouncedInputAmount) > 0)
+    hasValidInputs,
+    isRetrying,
   };
 };
