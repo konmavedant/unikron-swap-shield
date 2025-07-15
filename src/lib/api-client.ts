@@ -1,7 +1,7 @@
 import { ChainType } from '@/types';
 import { ApiException } from '@/types/api';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.unikron.xyz';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.unikron.xyz';
 
 class ApiClient {
   private baseURL: string;
