@@ -4,9 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { ArrowDownUp, Shield, Zap, Settings } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { TokenSelector } from "./TokenSelector";
+import { SwapQuoteDisplay } from "./SwapQuoteDisplay";
 import { Token, SwapQuote, ChainType } from "@/types";
+import { useSwapQuote, useCreateSwap } from "@/hooks/useApi";
+import { useSwapStore } from "@/store/swap";
+import { useWalletStore } from "@/store/wallet";
+import { toast } from "@/hooks/use-toast";
 
 interface SwapFormProps {
   chainType: ChainType;
@@ -21,13 +26,104 @@ export const SwapForm = ({
   onSwap, 
   isConnected = false 
 }: SwapFormProps) => {
+  // Local state for MEV protection
   const [mevProtection, setMevProtection] = useState(true);
-  const [fromAmount, setFromAmount] = useState("");
-  const [toAmount, setToAmount] = useState("");
-  const [fromToken, setFromToken] = useState<Token | undefined>();
-  const [toToken, setToToken] = useState<Token | undefined>();
-  const [quote, setQuote] = useState<SwapQuote | null>(null);
-  const [isLoadingQuote, setIsLoadingQuote] = useState(false);
+  
+  // Global swap state
+  const {
+    inputToken,
+    outputToken,
+    inputAmount,
+    outputAmount,
+    quote,
+    isLoadingQuote,
+    slippage,
+    setInputToken,
+    setOutputToken,
+    setInputAmount,
+    setQuote,
+    setLoadingQuote,
+    swapTokens: swapTokenPositions,
+  } = useSwapStore();
+
+  // Wallet state
+  const { address } = useWalletStore();
+
+  // Create quote request
+  const quoteRequest = useMemo(() => {
+    if (!inputToken || !outputToken || !inputAmount || !address || parseFloat(inputAmount) <= 0) {
+      return null;
+    }
+
+    return {
+      inputToken: inputToken.address,
+      outputToken: outputToken.address,
+      inputAmount: (parseFloat(inputAmount) * Math.pow(10, inputToken.decimals)).toString(),
+      slippage,
+      user: address,
+    };
+  }, [inputToken, outputToken, inputAmount, slippage, address]);
+
+  // Get quote from API
+  const { 
+    data: quoteData, 
+    isLoading: quoteLoading, 
+    error: quoteError 
+  } = useSwapQuote(chainType, quoteRequest, isConnected);
+
+  // Create swap mutation
+  const createSwapMutation = useCreateSwap();
+
+  // Update quote when API data changes
+  useEffect(() => {
+    setLoadingQuote(quoteLoading);
+    if (quoteData && !quoteLoading) {
+      setQuote(quoteData);
+    } else if (!quoteLoading) {
+      setQuote(null);
+    }
+  }, [quoteData, quoteLoading, setQuote, setLoadingQuote]);
+
+  // Handle quote errors
+  useEffect(() => {
+    if (quoteError) {
+      toast({
+        title: "Quote Error",
+        description: quoteError.message,
+        variant: "destructive",
+      });
+    }
+  }, [quoteError]);
+
+  const handleSwap = async () => {
+    if (!quote || !inputToken || !outputToken || !address) return;
+
+    try {
+      const swapRequest = {
+        inputToken: inputToken.address,
+        outputToken: outputToken.address,
+        inputAmount: (parseFloat(inputAmount) * Math.pow(10, inputToken.decimals)).toString(),
+        minOutputAmount: quote.minOutputAmount,
+        slippage,
+        user: address,
+        deadline: Math.floor(Date.now() / 1000) + (20 * 60), // 20 minutes
+      };
+
+      const result = await createSwapMutation.mutateAsync({
+        chainType,
+        request: swapRequest,
+      });
+
+      onSwap?.(quote);
+      
+      toast({
+        title: "Swap Submitted",
+        description: `Intent ID: ${result.intentId}`,
+      });
+    } catch (error) {
+      console.error('Swap failed:', error);
+    }
+  };
 
   return (
     <Card className="w-full max-w-md mx-auto shadow-card">
@@ -63,15 +159,15 @@ export const SwapForm = ({
               <Input
                 type="number"
                 placeholder="0.0"
-                value={fromAmount}
-                onChange={(e) => setFromAmount(e.target.value)}
+                value={inputAmount}
+                onChange={(e) => setInputAmount(e.target.value)}
                 className="text-lg h-12"
                 disabled={!isConnected}
               />
             </div>
             <TokenSelector
-              selectedToken={fromToken}
-              onTokenSelect={setFromToken}
+              selectedToken={inputToken}
+              onTokenSelect={setInputToken}
               tokens={tokens}
               label="Select Token"
               disabled={!isConnected}
@@ -85,15 +181,7 @@ export const SwapForm = ({
             variant="ghost" 
             size="icon" 
             className="rounded-full border border-border/50"
-            onClick={() => {
-              // Swap token positions
-              const tempToken = fromToken;
-              const tempAmount = fromAmount;
-              setFromToken(toToken);
-              setToToken(tempToken);
-              setFromAmount(toAmount);
-              setToAmount(tempAmount);
-            }}
+            onClick={swapTokenPositions}
             disabled={!isConnected}
           >
             <ArrowDownUp className="w-4 h-4" />
@@ -111,16 +199,15 @@ export const SwapForm = ({
               <Input
                 type="number"
                 placeholder="0.0"
-                value={toAmount}
-                onChange={(e) => setToAmount(e.target.value)}
+                value={outputAmount}
                 className="text-lg h-12"
                 readOnly
                 disabled={!isConnected}
               />
             </div>
             <TokenSelector
-              selectedToken={toToken}
-              onTokenSelect={setToToken}
+              selectedToken={outputToken}
+              onTokenSelect={setOutputToken}
               tokens={tokens}
               label="Select Token"
               disabled={!isConnected}
@@ -128,7 +215,14 @@ export const SwapForm = ({
           </div>
         </div>
 
-        {/* Swap Details */}
+        {/* Quote Display */}
+        <SwapQuoteDisplay 
+          quote={quote}
+          isLoading={isLoadingQuote}
+          mevProtection={mevProtection}
+        />
+
+        {/* MEV Protection Info */}
         {mevProtection && (
           <div className="p-3 rounded-lg bg-shield-cyan/5 border border-shield-cyan/20">
             <div className="flex items-center gap-2 mb-2">
@@ -141,46 +235,31 @@ export const SwapForm = ({
           </div>
         )}
 
-        <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Rate</span>
-            <span>1 ETH = 3,456.78 USDC</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Protocol Fee</span>
-            <span>0.25%</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Estimated Gas</span>
-            <span>~$12.34</span>
-          </div>
-        </div>
-
         <Button 
           variant={mevProtection ? "shield" : "cosmic"} 
           className="w-full h-12 text-base font-semibold"
-          disabled={!isConnected || !fromToken || !toToken || !fromAmount}
-          onClick={() => {
-            if (quote && onSwap) {
-              onSwap(quote);
-            }
-          }}
+          disabled={!isConnected || !inputToken || !outputToken || !inputAmount || isLoadingQuote || createSwapMutation.isPending}
+          onClick={handleSwap}
         >
           {!isConnected ? (
             "Connect Wallet"
-          ) : !fromToken || !toToken ? (
+          ) : !inputToken || !outputToken ? (
             "Select Tokens"
-          ) : !fromAmount ? (
+          ) : !inputAmount ? (
             "Enter Amount"
+          ) : isLoadingQuote ? (
+            "Getting Quote..."
+          ) : createSwapMutation.isPending ? (
+            "Creating Swap..."
           ) : mevProtection ? (
             <>
               <Shield className="w-4 h-4" />
-              {isLoadingQuote ? "Getting Quote..." : "Protected Swap"}
+              Protected Swap
             </>
           ) : (
             <>
               <Zap className="w-4 h-4" />
-              {isLoadingQuote ? "Getting Quote..." : "Instant Swap"}
+              Instant Swap
             </>
           )}
         </Button>
