@@ -45,6 +45,7 @@ All colors MUST be HSL.
     /* Gradients */
     --gradient-cosmic: linear-gradient(135deg, hsl(240 100% 70%), hsl(260 80% 65%));
     --gradient-shield: linear-gradient(135deg, hsl(185 100% 60%), hsl(200 100% 70%));
+    --gradient-rainbow: linear-gradient(135deg, hsl(0 100% 70%), hsl(45 100% 70%), hsl(120 100% 70%), hsl(240 100% 70%));
     --gradient-background: linear-gradient(180deg, hsl(215 28% 6%), hsl(217 32% 8%));
     
     /* Effects */

@@ -120,7 +120,12 @@ export const WalletModal = ({ open, onClose, onConnect }: WalletModalProps) => {
             </div>
 
             <div className="space-y-2">
-              {connectors.map((connector) => (
+              {/* Only show RainbowKit connector */}
+              {connectors.filter(connector => 
+                connector.name === 'RainbowKit' || 
+                connector.id === 'rainbowkit' ||
+                connector.name.toLowerCase().includes('rainbow')
+              ).map((connector) => (
                 <Button
                   key={connector.id}
                   variant="outline"
@@ -128,15 +133,35 @@ export const WalletModal = ({ open, onClose, onConnect }: WalletModalProps) => {
                   onClick={() => handleEvmWalletConnect(connector)}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center">
-                      {connector.name === 'MetaMask' ? '🦊' : 
-                       connector.name === 'WalletConnect' ? '🔗' : '💼'}
+                    <div className="w-8 h-8 rounded-full bg-gradient-rainbow flex items-center justify-center">
+                      🌈
                     </div>
-                    {connector.name}
+                    RainbowKit
                   </div>
                   <ExternalLink className="w-4 h-4" />
                 </Button>
               ))}
+              
+              {/* Fallback if RainbowKit connector not found, show first connector */}
+              {connectors.filter(connector => 
+                connector.name === 'RainbowKit' || 
+                connector.id === 'rainbowkit' ||
+                connector.name.toLowerCase().includes('rainbow')
+              ).length === 0 && connectors.length > 0 && (
+                <Button
+                  variant="outline"
+                  className="w-full justify-between h-12"
+                  onClick={() => handleEvmWalletConnect(connectors[0])}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-gradient-rainbow flex items-center justify-center">
+                      🌈
+                    </div>
+                    RainbowKit
+                  </div>
+                  <ExternalLink className="w-4 h-4" />
+                </Button>
+              )}
             </div>
           </TabsContent>
 
@@ -150,7 +175,11 @@ export const WalletModal = ({ open, onClose, onConnect }: WalletModalProps) => {
             </div>
 
             <div className="space-y-2">
-              {wallets.filter(wallet => wallet.readyState === 'Installed' || wallet.readyState === 'Loadable').map((wallet) => (
+              {/* Only show Phantom wallet */}
+              {wallets.filter(wallet => 
+                wallet.adapter.name === 'Phantom' && 
+                (wallet.readyState === 'Installed' || wallet.readyState === 'Loadable')
+              ).map((wallet) => (
                 <Button
                   key={wallet.adapter.name}
                   variant="outline"
@@ -162,20 +191,31 @@ export const WalletModal = ({ open, onClose, onConnect }: WalletModalProps) => {
                       {wallet.adapter.icon ? (
                         <img src={wallet.adapter.icon} alt={wallet.adapter.name} className="w-8 h-8 rounded-full" />
                       ) : (
-                        <span>{wallet.adapter.name === 'Phantom' ? '👻' : 
-                               wallet.adapter.name === 'Solflare' ? '☀️' : '💼'}</span>
+                        <span>👻</span>
                       )}
                     </div>
-                    {wallet.adapter.name}
+                    Phantom
                   </div>
                   <ExternalLink className="w-4 h-4" />
                 </Button>
               ))}
               
-              {wallets.filter(wallet => wallet.readyState === 'Installed' || wallet.readyState === 'Loadable').length === 0 && (
+              {/* Show fallback if Phantom not detected */}
+              {wallets.filter(wallet => 
+                wallet.adapter.name === 'Phantom' && 
+                (wallet.readyState === 'Installed' || wallet.readyState === 'Loadable')
+              ).length === 0 && (
                 <div className="text-center py-4 text-muted-foreground">
-                  <p className="text-sm">No Solana wallets detected.</p>
-                  <p className="text-xs mt-1">Please install Phantom or Solflare wallet.</p>
+                  <p className="text-sm">Phantom wallet not detected.</p>
+                  <p className="text-xs mt-1">Please install Phantom wallet to continue.</p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="mt-2"
+                    onClick={() => window.open('https://phantom.app/', '_blank')}
+                  >
+                    Install Phantom
+                  </Button>
                 </div>
               )}
             </div>
