@@ -6,14 +6,19 @@ interface WalletStore extends WalletState {
   connect: (address: string, chainType: ChainType, chainId?: number) => void;
   disconnect: () => void;
   setConnecting: (connecting: boolean) => void;
+  setReconnecting: (reconnecting: boolean) => void;
 }
 
 export const useWalletStore = create<WalletStore>((set) => ({
   address: null,
   chainType: null,
   chainId: undefined,
+  walletType: undefined,
   isConnected: false,
   isConnecting: false,
+  isReconnecting: false,
+  balance: undefined,
+  ensName: undefined,
 
   setWallet: (wallet) =>
     set((state) => ({ ...state, ...wallet })),
@@ -25,6 +30,7 @@ export const useWalletStore = create<WalletStore>((set) => ({
       chainId,
       isConnected: true,
       isConnecting: false,
+      isReconnecting: false,
     }),
 
   disconnect: () =>
@@ -32,10 +38,17 @@ export const useWalletStore = create<WalletStore>((set) => ({
       address: null,
       chainType: null,
       chainId: undefined,
+      walletType: undefined,
       isConnected: false,
       isConnecting: false,
+      isReconnecting: false,
+      balance: undefined,
+      ensName: undefined,
     }),
 
   setConnecting: (isConnecting) =>
     set({ isConnecting }),
+
+  setReconnecting: (isReconnecting) =>
+    set({ isReconnecting }),
 }));

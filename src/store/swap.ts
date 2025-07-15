@@ -1,7 +1,26 @@
 import { create } from 'zustand';
-import { SwapState, Token, SwapQuote, ChainType } from '@/types';
+import { Token, SwapQuote, SwapConfig } from '@/types';
 
-interface SwapStore extends SwapState {
+// Updated to use new SwapConfig type
+const DEFAULT_CONFIG: SwapConfig = {
+  slippage: 0.5,
+  deadline: 20,
+  mevProtection: true,
+};
+
+interface SwapStore {
+  // State
+  inputToken: Token | null;
+  outputToken: Token | null;
+  inputAmount: string;
+  outputAmount: string;
+  quote: SwapQuote | null;
+  config: SwapConfig;
+  isLoadingQuote: boolean;
+  isSwapping: boolean;
+  activeIntentId: string | null;
+  error: string | null;
+  // Actions
   setInputToken: (token: Token | null) => void;
   setOutputToken: (token: Token | null) => void;
   setInputAmount: (amount: string) => void;
@@ -9,12 +28,10 @@ interface SwapStore extends SwapState {
   setQuote: (quote: SwapQuote | null) => void;
   setLoadingQuote: (loading: boolean) => void;
   setSwapping: (swapping: boolean) => void;
-  setSlippage: (slippage: number) => void;
+  setConfig: (config: Partial<SwapConfig>) => void;
+  setError: (error: string | null) => void;
   swapTokens: () => void;
   resetSwap: () => void;
-  
-  // Current active intent tracking
-  activeIntentId: string | null;
   setActiveIntentId: (intentId: string | null) => void;
 }
 
@@ -25,20 +42,21 @@ export const useSwapStore = create<SwapStore>((set, get) => ({
   inputAmount: '',
   outputAmount: '',
   quote: null,
+  config: DEFAULT_CONFIG,
   isLoadingQuote: false,
   isSwapping: false,
-  slippage: 0.5,
   activeIntentId: null,
+  error: null,
 
   // Actions
   setInputToken: (token) => 
-    set({ inputToken: token, quote: null }),
+    set({ inputToken: token, quote: null, error: null }),
 
   setOutputToken: (token) => 
-    set({ outputToken: token, quote: null }),
+    set({ outputToken: token, quote: null, error: null }),
 
   setInputAmount: (amount) => 
-    set({ inputAmount: amount, quote: null }),
+    set({ inputAmount: amount, quote: null, error: null }),
 
   setOutputAmount: (amount) => 
     set({ outputAmount: amount }),
@@ -47,6 +65,7 @@ export const useSwapStore = create<SwapStore>((set, get) => ({
     set({ 
       quote,
       outputAmount: quote?.outputAmount || '',
+      error: null,
     });
   },
 
@@ -56,8 +75,15 @@ export const useSwapStore = create<SwapStore>((set, get) => ({
   setSwapping: (isSwapping) => 
     set({ isSwapping }),
 
-  setSlippage: (slippage) => 
-    set({ slippage, quote: null }),
+  setConfig: (configUpdate) => 
+    set((state) => ({ 
+      config: { ...state.config, ...configUpdate },
+      quote: null, // Reset quote when config changes
+      error: null,
+    })),
+
+  setError: (error) => 
+    set({ error }),
 
   setActiveIntentId: (activeIntentId) => 
     set({ activeIntentId }),
@@ -70,6 +96,7 @@ export const useSwapStore = create<SwapStore>((set, get) => ({
       inputAmount: outputAmount,
       outputAmount: inputAmount,
       quote: null,
+      error: null,
     });
   },
 
@@ -83,5 +110,7 @@ export const useSwapStore = create<SwapStore>((set, get) => ({
       isLoadingQuote: false,
       isSwapping: false,
       activeIntentId: null,
+      error: null,
+      config: DEFAULT_CONFIG,
     }),
 }));

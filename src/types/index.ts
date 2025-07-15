@@ -1,73 +1,88 @@
-// Re-export API types
-export * from './api';
+// Re-export all type modules for easy importing
+export * from './chains';
+export * from './tokens';
+export * from './wallet';
+export * from './swap';
+export * from './ui';
+export * from './constants';
+// Re-export API types but resolve naming conflicts
+export type { 
+  ApiResponse, 
+  PaginatedResponse, 
+  ApiError, 
+  TokenListResponse,
+  TokenSearchRequest,
+  TokenPriceRequest,
+  TokenPriceResponse,
+  QuoteRequest,
+  QuoteResponse,
+  SwapRequest,
+  SwapResponse,
+  SwapStatusResponse,
+  SwapHistoryRequest,
+  SwapAnalytics,
+  UserAnalytics
+} from './api';
+export { ApiException } from './api';
+// Rename the conflicting type
+export type { SwapHistoryItem as ApiSwapHistoryItem } from './api';
 
-// Core domain types
-export interface Token {
+// Legacy types for backward compatibility (will be removed in next version)
+/** @deprecated Use Token from './tokens' instead */
+export interface LegacyToken {
   address: string;
   symbol: string;
   name: string;
   decimals: number;
   logoURI: string;
-  chainId?: number; // EVM only
+  chainId?: number;
   balance?: string;
 }
 
-export interface SwapQuote {
-  inputToken: Token;
-  outputToken: Token;
+/** @deprecated Use SwapQuote from './swap' instead */
+export interface LegacySwapQuote {
+  inputToken: LegacyToken;
+  outputToken: LegacyToken;
   inputAmount: string;
   outputAmount: string;
   priceImpact: number;
   fee: string;
   route: string[];
-  estimatedGas?: string; // EVM only
+  estimatedGas?: string;
   slippage: number;
   minOutputAmount: string;
 }
 
+/** @deprecated Use SwapIntent from './swap' instead */
 export interface Intent {
   intentId: string;
   status: 'pending' | 'committed' | 'executed' | 'expired' | 'cancelled';
   txHash?: string;
   createdAt: number;
   executedAt?: number;
-  inputToken: Token;
-  outputToken: Token;
+  inputToken: LegacyToken;
+  outputToken: LegacyToken;
   inputAmount: string;
   outputAmount: string;
 }
 
-export interface WalletState {
+/** @deprecated Use WalletState from './wallet' instead */
+export interface LegacyWalletState {
   address: string | null;
   chainType: 'evm' | 'solana' | null;
-  chainId?: number; // EVM only
+  chainId?: number;
   isConnected: boolean;
   isConnecting: boolean;
 }
 
-export interface SwapState {
-  inputToken: Token | null;
-  outputToken: Token | null;
+/** @deprecated Use SwapState from './swap' instead */
+export interface LegacySwapState {
+  inputToken: LegacyToken | null;
+  outputToken: LegacyToken | null;
   inputAmount: string;
   outputAmount: string;
-  quote: SwapQuote | null;
+  quote: LegacySwapQuote | null;
   isLoadingQuote: boolean;
   isSwapping: boolean;
   slippage: number;
-}
-
-export type ChainType = 'evm' | 'solana';
-
-export interface SwapRequest {
-  inputToken: string;
-  outputToken: string;
-  inputAmount: string;
-  slippage: number;
-  user: string;
-}
-
-export interface SwapResponse {
-  tx: string;
-  intentId: string;
-  status: string;
 }

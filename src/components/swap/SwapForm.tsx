@@ -36,13 +36,14 @@ export const SwapForm = ({
     inputAmount,
     outputAmount,
     quote,
+    config,
     isLoadingQuote,
-    slippage,
     setInputToken,
     setOutputToken,
     setInputAmount,
     setQuote,
     setLoadingQuote,
+    setConfig,
     swapTokens: swapTokenPositions,
   } = useSwapStore();
 
@@ -59,10 +60,11 @@ export const SwapForm = ({
       inputToken: inputToken.address,
       outputToken: outputToken.address,
       inputAmount: (parseFloat(inputAmount) * Math.pow(10, inputToken.decimals)).toString(),
-      slippage,
+      slippage: config.slippage,
       user: address,
+      config,
     };
-  }, [inputToken, outputToken, inputAmount, slippage, address]);
+  }, [inputToken, outputToken, inputAmount, config, address]);
 
   // Get quote from API
   const { 
@@ -104,9 +106,10 @@ export const SwapForm = ({
         outputToken: outputToken.address,
         inputAmount: (parseFloat(inputAmount) * Math.pow(10, inputToken.decimals)).toString(),
         minOutputAmount: quote.minOutputAmount,
-        slippage,
+        slippage: config.slippage,
         user: address,
-        deadline: Math.floor(Date.now() / 1000) + (20 * 60), // 20 minutes
+        deadline: Math.floor(Date.now() / 1000) + (config.deadline * 60),
+        config,
       };
 
       const result = await createSwapMutation.mutateAsync({
