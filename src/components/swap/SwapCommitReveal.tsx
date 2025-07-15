@@ -1,211 +1,255 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
-import { Shield, Clock, CheckCircle, AlertCircle, Eye, Timer } from "lucide-react";
-import { SwapIntent } from "@/types";
-import { useState, useEffect } from "react";
+import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Shield, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { SwapQuote } from '@/types';
+import { UnikronApiService } from '@/services/api';
+import { useToast } from '@/hooks/use-toast';
 
 interface SwapCommitRevealProps {
-  swapIntent: SwapIntent;
-  onReveal?: () => void;
-  onCancel?: () => void;
-  timeRemaining?: number;
+  quote: SwapQuote;
+  chainType: 'evm' | 'solana';
+  userAddress: string;
+  onSwapComplete: (intentId: string) => void;
+  onCancel: () => void;
 }
 
-export const SwapCommitReveal = ({
-  swapIntent,
-  onReveal,
-  onCancel,
-  timeRemaining = 0
+type CommitRevealState = 'idle' | 'committing' | 'committed' | 'revealing' | 'completed' | 'failed';
+
+export const SwapCommitReveal = ({ 
+  quote, 
+  chainType, 
+  userAddress, 
+  onSwapComplete, 
+  onCancel 
 }: SwapCommitRevealProps) => {
-  const [progress, setProgress] = useState(0);
-  const [phase, setPhase] = useState<'commit' | 'reveal' | 'executed' | 'expired'>('commit');
+  const [state, setState] = useState<CommitRevealState>('idle');
+  const [commitTxHash, setCommitTxHash] = useState<string | null>(null);
+  const [intentId, setIntentId] = useState<string | null>(null);
+  const [timeLeft, setTimeLeft] = useState<number>(0);
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  const COMMIT_PHASE_DURATION = 30; // 30 seconds
 
   useEffect(() => {
-    if (swapIntent.status === 'committed') {
-      setPhase('reveal');
-    } else if (swapIntent.status === 'executed') {
-      setPhase('executed');
-    } else if (swapIntent.status === 'expired') {
-      setPhase('expired');
+    let interval: NodeJS.Timeout;
+    
+    if (state === 'committed' && timeLeft > 0) {
+      interval = setInterval(() => {
+        setTimeLeft(prev => {
+          if (prev <= 1) {
+            setState('revealing');
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
     }
-  }, [swapIntent.status]);
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const elapsed = Date.now() - swapIntent.createdAt;
-      const total = 300000; // 5 minutes commit window
-      const currentProgress = Math.min((elapsed / total) * 100, 100);
-      setProgress(currentProgress);
-    }, 1000);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [state, timeLeft]);
 
-    return () => clearInterval(timer);
-  }, [swapIntent.createdAt]);
+  const handleCommit = async () => {
+    setState('committing');
+    setError(null);
 
-  const formatTime = (ms: number) => {
-    const minutes = Math.floor(ms / 60000);
-    const seconds = Math.floor((ms % 60000) / 1000);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    try {
+      // Create the swap intent with commit phase
+      const swapRequest = {
+        inputToken: quote.inputToken.address,
+        outputToken: quote.outputToken.address,
+        inputAmount: quote.inputAmount,
+        minOutputAmount: quote.minOutputAmount,
+        slippage: quote.slippage,
+        user: userAddress,
+        deadline: Math.floor(Date.now() / 1000) + (20 * 60), // 20 minutes
+        quoteId: quote.quoteId,
+        config: {
+          slippage: quote.slippage,
+          deadline: 20,
+          mevProtection: true
+        }
+      };
+
+      const response = await UnikronApiService.createSwap(chainType, swapRequest);
+      
+      setCommitTxHash(response.tx);
+      setIntentId(response.intentId);
+      setState('committed');
+      setTimeLeft(COMMIT_PHASE_DURATION);
+
+      toast({
+        title: "Commit Phase Started",
+        description: "Your swap intent has been committed. Waiting for reveal phase...",
+      });
+
+    } catch (err) {
+      console.error('Commit failed:', err);
+      setError(err instanceof Error ? err.message : 'Commit phase failed');
+      setState('failed');
+      toast({
+        title: "Commit Failed",
+        description: "Failed to commit swap intent. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const getStatusColor = (): "default" | "destructive" | "secondary" | "outline" => {
-    switch (phase) {
-      case 'commit': return 'secondary';
-      case 'reveal': return 'default';
-      case 'executed': return 'default';
-      case 'expired': return 'destructive';
-      default: return 'default';
+  const handleReveal = async () => {
+    if (!intentId) return;
+
+    setState('revealing');
+    setError(null);
+
+    try {
+      // Poll for swap completion
+      const result = await UnikronApiService.pollSwapStatus(
+        chainType, 
+        intentId, 
+        2000, // Poll every 2 seconds
+        120000 // 2 minute timeout
+      );
+
+      if (result.status === 'executed') {
+        setState('completed');
+        onSwapComplete(intentId);
+        toast({
+          title: "Swap Completed",
+          description: "Your swap has been executed successfully!",
+        });
+      } else {
+        throw new Error(`Swap failed with status: ${result.status}`);
+      }
+
+    } catch (err) {
+      console.error('Reveal failed:', err);
+      setError(err instanceof Error ? err.message : 'Reveal phase failed');
+      setState('failed');
+      toast({
+        title: "Swap Failed",
+        description: "The swap could not be completed. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
-  const getStatusIcon = () => {
-    switch (phase) {
-      case 'commit': return <Clock className="w-4 h-4" />;
-      case 'reveal': return <Eye className="w-4 h-4" />;
-      case 'executed': return <CheckCircle className="w-4 h-4" />;
-      case 'expired': return <AlertCircle className="w-4 h-4" />;
-      default: return <Clock className="w-4 h-4" />;
+  const getStateDisplay = () => {
+    switch (state) {
+      case 'idle':
+        return { icon: Shield, text: 'Ready to Commit', color: 'text-primary' };
+      case 'committing':
+        return { icon: Clock, text: 'Committing...', color: 'text-yellow-500' };
+      case 'committed':
+        return { icon: Clock, text: `Waiting ${timeLeft}s`, color: 'text-blue-500' };
+      case 'revealing':
+        return { icon: Clock, text: 'Executing Swap...', color: 'text-blue-500' };
+      case 'completed':
+        return { icon: CheckCircle, text: 'Completed', color: 'text-green-500' };
+      case 'failed':
+        return { icon: AlertCircle, text: 'Failed', color: 'text-red-500' };
+    }
+  };
+
+  const stateDisplay = getStateDisplay();
+  const StateIcon = stateDisplay.icon;
+
+  const getProgress = () => {
+    switch (state) {
+      case 'committing': return 25;
+      case 'committed': return 50 + (25 * (COMMIT_PHASE_DURATION - timeLeft) / COMMIT_PHASE_DURATION);
+      case 'revealing': return 75;
+      case 'completed': return 100;
+      case 'failed': return 0;
+      default: return 0;
     }
   };
 
   return (
-    <Card className="w-full max-w-md mx-auto shadow-card">
-      <CardHeader className="pb-4">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-xl">MEV Protected Swap</CardTitle>
-          <Badge variant={getStatusColor()} className="flex items-center gap-1">
-            {getStatusIcon()}
-            {phase.charAt(0).toUpperCase() + phase.slice(1)}
-          </Badge>
-        </div>
+    <Card className="w-full max-w-md mx-auto">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <StateIcon className={`h-5 w-5 ${stateDisplay.color}`} />
+          MEV Protection
+        </CardTitle>
+        <Badge variant="secondary" className="w-fit">
+          Commit-Reveal Protocol
+        </Badge>
       </CardHeader>
-
-      <CardContent className="space-y-4">
-        {/* Progress Indicator */}
+      
+      <CardContent className="space-y-6">
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Progress</span>
-            <span className="font-medium">{Math.round(progress)}%</span>
+            <span>Progress</span>
+            <span>{Math.round(getProgress())}%</span>
           </div>
-          <Progress value={progress} className="h-2" />
+          <Progress value={getProgress()} className="h-2" />
+          <p className="text-sm text-muted-foreground">{stateDisplay.text}</p>
         </div>
 
-        {/* Phase Information */}
-        <div className="p-4 rounded-lg bg-secondary/50 border border-border/50">
-          <div className="flex items-center gap-2 mb-2">
-            <Shield className="w-4 h-4 text-shield-cyan" />
-            <span className="font-medium text-shield-cyan">
-              {phase === 'commit' && 'Commit Phase'}
-              {phase === 'reveal' && 'Reveal Phase'}
-              {phase === 'executed' && 'Executed'}
-              {phase === 'expired' && 'Expired'}
-            </span>
+        {error && (
+          <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+            <p className="text-sm text-destructive">{error}</p>
           </div>
-          
-          <p className="text-sm text-muted-foreground">
-            {phase === 'commit' && 'Your swap commitment is secured. You can reveal when ready.'}
-            {phase === 'reveal' && 'Ready to reveal and execute your protected swap.'}
-            {phase === 'executed' && 'Your swap has been successfully executed!'}
-            {phase === 'expired' && 'The commit window has expired. Please start a new swap.'}
-          </p>
-        </div>
+        )}
 
-        <Separator />
-
-        {/* Swap Details */}
-        <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-muted-foreground">Intent ID</span>
-            <span className="text-sm font-mono text-right break-all max-w-[200px]">
-              {swapIntent.intentId.slice(0, 16)}...
-            </span>
-          </div>
-
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-muted-foreground">From</span>
-            <span className="text-sm font-medium">
-              {swapIntent.inputAmount} {swapIntent.inputToken.symbol}
-            </span>
-          </div>
-
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-muted-foreground">To (Expected)</span>
-            <span className="text-sm font-medium">
-              {swapIntent.outputAmount} {swapIntent.outputToken.symbol}
-            </span>
-          </div>
-
-          {timeRemaining > 0 && (
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Time Remaining</span>
-              <div className="flex items-center gap-1">
-                <Timer className="w-3 h-3" />
-                <span className="text-sm font-medium">{formatTime(timeRemaining)}</span>
-              </div>
+        <div className="space-y-2">
+          <h4 className="font-medium">Swap Details</h4>
+          <div className="space-y-1 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">From:</span>
+              <span>{quote.inputAmount} {quote.inputToken.symbol}</span>
             </div>
-          )}
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">To:</span>
+              <span>{quote.outputAmount} {quote.outputToken.symbol}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Min Received:</span>
+              <span>{quote.minOutputAmount} {quote.outputToken.symbol}</span>
+            </div>
+          </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-3 pt-2">
-          {phase === 'commit' && (
+        <div className="flex gap-2">
+          {state === 'idle' && (
             <>
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={onCancel}
-              >
-                Cancel
+              <Button onClick={handleCommit} className="flex-1">
+                Start Commit Phase
               </Button>
-              <Button
-                variant="shield"
-                className="flex-1"
-                onClick={onReveal}
-                disabled={!onReveal}
-              >
-                <Eye className="w-4 h-4" />
-                Reveal Now
+              <Button variant="outline" onClick={onCancel}>
+                Cancel
               </Button>
             </>
           )}
-
-          {phase === 'reveal' && (
-            <Button
-              variant="shield"
-              className="w-full"
-              onClick={onReveal}
-              disabled={!onReveal}
-            >
-              <Eye className="w-4 h-4" />
+          
+          {state === 'committed' && timeLeft === 0 && (
+            <Button onClick={handleReveal} className="flex-1">
               Execute Swap
             </Button>
           )}
-
-          {(phase === 'executed' || phase === 'expired') && (
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={onCancel}
-            >
-              Close
+          
+          {state === 'failed' && (
+            <>
+              <Button onClick={handleCommit} className="flex-1">
+                Retry
+              </Button>
+              <Button variant="outline" onClick={onCancel}>
+                Cancel
+              </Button>
+            </>
+          )}
+          
+          {state === 'completed' && (
+            <Button onClick={() => onSwapComplete(intentId!)} className="flex-1">
+              View Details
             </Button>
           )}
         </div>
-
-        {/* Warning for commit phase */}
-        {phase === 'commit' && (
-          <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
-            <div className="flex items-center gap-2 mb-1">
-              <AlertCircle className="w-4 h-4 text-amber-500" />
-              <span className="text-sm font-medium text-amber-500">Commit Window Active</span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              You have 5 minutes to reveal your swap. The longer you wait, the better MEV protection.
-            </p>
-          </div>
-        )}
       </CardContent>
     </Card>
   );

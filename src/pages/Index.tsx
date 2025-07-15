@@ -72,7 +72,10 @@ const Index = () => {
         
         <div className="grid lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
           <div className="lg:col-span-1 space-y-6">
-            <ChainSelector />
+            <ChainSelector 
+              selectedChain={selectedChain}
+              onChainSelect={setSelectedChain}
+            />
             
             <div className="flex justify-center">
               {isAnyWalletConnected ? (

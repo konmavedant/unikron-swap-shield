@@ -8,29 +8,26 @@ import { useState, useEffect, useMemo } from "react";
 import { TokenSelector } from "./TokenSelector";
 import { SwapQuoteDisplay } from "./SwapQuoteDisplay";
 import { Token, SwapQuote, ChainType } from "@/types";
-import { useSwapQuote, useCreateSwap } from "@/hooks/useApi";
+import { useSwapQuote } from "@/hooks/useSwapQuote";
 import { useSwapStore } from "@/store/swap";
-import { useWalletStore } from "@/store/wallet";
-import { toast } from "@/hooks/use-toast";
 
 interface SwapFormProps {
-  chainType: ChainType;
   tokens: Token[];
-  onSwap?: (quote: SwapQuote) => void;
-  isConnected?: boolean;
+  isConnected: boolean;
+  onPreview: () => void;
 }
 
 export const SwapForm = ({ 
-  chainType, 
   tokens, 
-  onSwap, 
-  isConnected = false 
+  onPreview,
+  isConnected 
 }: SwapFormProps) => {
   // Local state for MEV protection
   const [mevProtection, setMevProtection] = useState(true);
   
   // Global swap state
   const {
+    chainType,
     inputToken,
     outputToken,
     inputAmount,
@@ -41,90 +38,20 @@ export const SwapForm = ({
     setInputToken,
     setOutputToken,
     setInputAmount,
-    setQuote,
-    setLoadingQuote,
     setConfig,
     swapTokens: swapTokenPositions,
   } = useSwapStore();
 
-  // Wallet state
-  const { address } = useWalletStore();
+  const { hasValidInputs } = useSwapQuote();
 
-  // Create quote request
-  const quoteRequest = useMemo(() => {
-    if (!inputToken || !outputToken || !inputAmount || !address || parseFloat(inputAmount) <= 0) {
-      return null;
-    }
-
-    return {
-      inputToken: inputToken.address,
-      outputToken: outputToken.address,
-      inputAmount: (parseFloat(inputAmount) * Math.pow(10, inputToken.decimals)).toString(),
-      slippage: config.slippage,
-      user: address,
-      config,
-    };
-  }, [inputToken, outputToken, inputAmount, config, address]);
-
-  // Get quote from API
-  const { 
-    data: quoteData, 
-    isLoading: quoteLoading, 
-    error: quoteError 
-  } = useSwapQuote(chainType, quoteRequest, isConnected);
-
-  // Create swap mutation
-  const createSwapMutation = useCreateSwap();
-
-  // Update quote when API data changes
+  // Update MEV protection in config
   useEffect(() => {
-    setLoadingQuote(quoteLoading);
-    if (quoteData && !quoteLoading) {
-      setQuote(quoteData);
-    } else if (!quoteLoading) {
-      setQuote(null);
-    }
-  }, [quoteData, quoteLoading, setQuote, setLoadingQuote]);
+    setConfig({ mevProtection });
+  }, [mevProtection, setConfig]);
 
-  // Handle quote errors
-  useEffect(() => {
-    if (quoteError) {
-      toast({
-        title: "Quote Error",
-        description: quoteError.message,
-        variant: "destructive",
-      });
-    }
-  }, [quoteError]);
-
-  const handleSwap = async () => {
-    if (!quote || !inputToken || !outputToken || !address) return;
-
-    try {
-      const swapRequest = {
-        inputToken: inputToken.address,
-        outputToken: outputToken.address,
-        inputAmount: (parseFloat(inputAmount) * Math.pow(10, inputToken.decimals)).toString(),
-        minOutputAmount: quote.minOutputAmount,
-        slippage: config.slippage,
-        user: address,
-        deadline: Math.floor(Date.now() / 1000) + (config.deadline * 60),
-        config,
-      };
-
-      const result = await createSwapMutation.mutateAsync({
-        chainType,
-        request: swapRequest,
-      });
-
-      onSwap?.(quote);
-      
-      toast({
-        title: "Swap Submitted",
-        description: `Intent ID: ${result.intentId}`,
-      });
-    } catch (error) {
-      console.error('Swap failed:', error);
+  const handlePreview = () => {
+    if (hasValidInputs && quote) {
+      onPreview();
     }
   };
 
@@ -239,10 +166,10 @@ export const SwapForm = ({
         )}
 
         <Button 
-          variant={mevProtection ? "shield" : "cosmic"} 
+          variant={mevProtection ? "default" : "secondary"} 
           className="w-full h-12 text-base font-semibold"
-          disabled={!isConnected || !inputToken || !outputToken || !inputAmount || isLoadingQuote || createSwapMutation.isPending}
-          onClick={handleSwap}
+          disabled={!isConnected || !inputToken || !outputToken || !inputAmount || isLoadingQuote}
+          onClick={handlePreview}
         >
           {!isConnected ? (
             "Connect Wallet"
@@ -252,17 +179,15 @@ export const SwapForm = ({
             "Enter Amount"
           ) : isLoadingQuote ? (
             "Getting Quote..."
-          ) : createSwapMutation.isPending ? (
-            "Creating Swap..."
           ) : mevProtection ? (
             <>
               <Shield className="w-4 h-4" />
-              Protected Swap
+              Preview Protected Swap
             </>
           ) : (
             <>
               <Zap className="w-4 h-4" />
-              Instant Swap
+              Preview Swap
             </>
           )}
         </Button>

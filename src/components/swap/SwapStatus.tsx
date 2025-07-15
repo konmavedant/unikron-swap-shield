@@ -9,10 +9,10 @@ import { formatNumber, truncateAddress } from "@/lib/utils";
 interface SwapStatusProps {
   intentId: string;
   chainType: ChainType;
-  onClose?: () => void;
+  onReset: () => void;
 }
 
-export const SwapStatus = ({ intentId, chainType, onClose }: SwapStatusProps) => {
+export const SwapStatus = ({ intentId, chainType, onReset }: SwapStatusProps) => {
   const { data: status, isLoading, refetch } = useSwapStatus(chainType, intentId);
 
   const getStatusIcon = () => {
@@ -64,14 +64,7 @@ export const SwapStatus = ({ intentId, chainType, onClose }: SwapStatusProps) =>
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">Swap Status</CardTitle>
-          {onClose && (
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              ×
-            </Button>
-          )}
-        </div>
+        <CardTitle className="text-lg">Swap Status</CardTitle>
       </CardHeader>
       
       <CardContent className="space-y-4">
@@ -165,11 +158,9 @@ export const SwapStatus = ({ intentId, chainType, onClose }: SwapStatusProps) =>
             Refresh
           </Button>
           
-          {status?.status === 'executed' && onClose && (
-            <Button variant="cosmic" size="sm" onClick={onClose} className="flex-1">
-              Done
-            </Button>
-          )}
+          <Button variant="default" size="sm" onClick={onReset} className="flex-1">
+            New Swap
+          </Button>
         </div>
       </CardContent>
     </Card>

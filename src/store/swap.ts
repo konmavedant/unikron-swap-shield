@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Token, SwapQuote, SwapConfig } from '@/types';
+import { Token, SwapQuote, SwapConfig, ChainType } from '@/types';
 
 // Updated to use new SwapConfig type
 const DEFAULT_CONFIG: SwapConfig = {
@@ -10,6 +10,7 @@ const DEFAULT_CONFIG: SwapConfig = {
 
 interface SwapStore {
   // State
+  chainType: ChainType;
   inputToken: Token | null;
   outputToken: Token | null;
   inputAmount: string;
@@ -21,6 +22,7 @@ interface SwapStore {
   activeIntentId: string | null;
   error: string | null;
   // Actions
+  setChainType: (chainType: ChainType) => void;
   setInputToken: (token: Token | null) => void;
   setOutputToken: (token: Token | null) => void;
   setInputAmount: (amount: string) => void;
@@ -37,6 +39,7 @@ interface SwapStore {
 
 export const useSwapStore = create<SwapStore>((set, get) => ({
   // Initial state
+  chainType: 'evm',
   inputToken: null,
   outputToken: null,
   inputAmount: '',
@@ -49,6 +52,9 @@ export const useSwapStore = create<SwapStore>((set, get) => ({
   error: null,
 
   // Actions
+  setChainType: (chainType) => 
+    set({ chainType, inputToken: null, outputToken: null, quote: null, error: null }),
+
   setInputToken: (token) => 
     set({ inputToken: token, quote: null, error: null }),
 
