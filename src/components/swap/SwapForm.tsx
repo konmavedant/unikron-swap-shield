@@ -3,6 +3,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Label } from "@/components/ui/label";
 import { ArrowDownUp, Shield, Zap, Settings } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { TokenSelector } from "./TokenSelector";
@@ -22,8 +24,9 @@ export const SwapForm = ({
   onPreview,
   isConnected 
 }: SwapFormProps) => {
-  // Local state for MEV protection
+  // Local state for MEV protection and settings
   const [mevProtection, setMevProtection] = useState(true);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   
   // Global swap state
   const {
@@ -60,9 +63,64 @@ export const SwapForm = ({
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-xl">Swap Tokens</CardTitle>
-          <Button variant="ghost" size="icon">
-            <Settings className="w-4 h-4" />
-          </Button>
+          <Popover open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Settings className="w-4 h-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 bg-background border shadow-lg" align="end">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="slippage">Slippage Tolerance (%)</Label>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant={config.slippage === 0.1 ? "default" : "outline"} 
+                      size="sm"
+                      onClick={() => setConfig({ slippage: 0.1 })}
+                    >
+                      0.1%
+                    </Button>
+                    <Button 
+                      variant={config.slippage === 0.5 ? "default" : "outline"} 
+                      size="sm"
+                      onClick={() => setConfig({ slippage: 0.5 })}
+                    >
+                      0.5%
+                    </Button>
+                    <Button 
+                      variant={config.slippage === 1.0 ? "default" : "outline"} 
+                      size="sm"
+                      onClick={() => setConfig({ slippage: 1.0 })}
+                    >
+                      1.0%
+                    </Button>
+                  </div>
+                  <Input
+                    id="slippage"
+                    type="number"
+                    step="0.1"
+                    min="0.1"
+                    max="50"
+                    value={config.slippage}
+                    onChange={(e) => setConfig({ slippage: parseFloat(e.target.value) || 0.5 })}
+                    placeholder="Custom"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="deadline">Transaction Deadline (minutes)</Label>
+                  <Input
+                    id="deadline"
+                    type="number"
+                    min="1"
+                    max="60"
+                    value={config.deadline}
+                    onChange={(e) => setConfig({ deadline: parseInt(e.target.value) || 20 })}
+                  />
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
         
         <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 border border-border/50">
