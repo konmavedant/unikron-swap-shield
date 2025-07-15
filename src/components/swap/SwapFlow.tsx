@@ -3,10 +3,15 @@ import { ChainType, Token, SwapQuote } from '@/types';
 import { SwapForm } from './SwapForm';
 import { SwapPreview } from './SwapPreview';
 import { SwapCommitReveal } from './SwapCommitReveal';
+import { SwapProgressTracker } from '@/components/ui/swap-progress-tracker';
+import { SwapSuccessAnimation, StatusIndicator } from '@/components/ui/enhanced-animations';
+import { ErrorBoundary, NetworkStatus, LoadingOverlay } from '@/components/ui/error-boundary';
+import { SkeletonSwapForm } from '@/components/ui/skeleton-components';
 import { useSwapStore } from '@/store/swap';
 import { useSwapSession } from '@/hooks/useSwapSession';
 import { useCreateSwap } from '@/hooks/useApi';
 import { useWalletStore } from '@/store/wallet';
+import { useAppStore } from '@/store/app';
 import { toast } from '@/hooks/use-toast';
 
 interface SwapFlowProps {
@@ -17,6 +22,8 @@ interface SwapFlowProps {
 
 export const SwapFlow = ({ chainType, tokens, isConnected }: SwapFlowProps) => {
   const [showPreview, setShowPreview] = useState(false);
+  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
+  const [completedSwap, setCompletedSwap] = useState<{ from: any; to: any } | null>(null);
   
   const {
     inputToken,
@@ -29,15 +36,17 @@ export const SwapFlow = ({ chainType, tokens, isConnected }: SwapFlowProps) => {
   } = useSwapStore();
 
   const { address } = useWalletStore();
+  const { setLoading, incrementSwapCount, recordChainUsage, settings } = useAppStore();
   const { session, startSession, recoverSession, clearSession, revealSwap } = useSwapSession(chainType);
   const createSwapMutation = useCreateSwap();
 
-  // Try to recover session on mount
+  // Try to recover session on mount and track chain usage
   useEffect(() => {
     if (isConnected) {
       recoverSession();
+      recordChainUsage(chainType);
     }
-  }, [isConnected, recoverSession]);
+  }, [isConnected, recoverSession, recordChainUsage, chainType]);
 
   // Handle swap initiation from form
   const handleSwapInitiated = (swapQuote: SwapQuote) => {
@@ -55,6 +64,7 @@ export const SwapFlow = ({ chainType, tokens, isConnected }: SwapFlowProps) => {
 
     try {
       setSwapping(true);
+      setLoading(true, 'Creating swap intent...');
 
       const swapRequest = {
         inputToken: inputToken.address,
@@ -89,6 +99,7 @@ export const SwapFlow = ({ chainType, tokens, isConnected }: SwapFlowProps) => {
 
       if (config.mevProtection) {
         // Start MEV protected session
+        setLoading(true, 'Securing your swap with MEV protection...');
         startSession(swapIntent);
         setShowPreview(false);
         
@@ -96,12 +107,25 @@ export const SwapFlow = ({ chainType, tokens, isConnected }: SwapFlowProps) => {
           title: "Swap Committed",
           description: "Your swap is protected. You can reveal when ready.",
         });
+        
+        // Track successful commit
+        incrementSwapCount();
       } else {
         // Direct swap execution
         toast({
           title: "Swap Submitted",
           description: `Intent ID: ${result.intentId}`,
         });
+        
+        // Show success animation for instant swaps
+        setCompletedSwap({
+          from: { symbol: inputToken.symbol, amount: inputAmount },
+          to: { symbol: outputToken.symbol, amount: quote.outputAmount }
+        });
+        setShowSuccessAnimation(true);
+        
+        // Track successful swap
+        incrementSwapCount();
         
         // Reset form after successful submission
         setTimeout(() => {
@@ -117,6 +141,7 @@ export const SwapFlow = ({ chainType, tokens, isConnected }: SwapFlowProps) => {
       });
     } finally {
       setSwapping(false);
+      setLoading(false);
     }
   };
 
@@ -136,42 +161,116 @@ export const SwapFlow = ({ chainType, tokens, isConnected }: SwapFlowProps) => {
     resetSwap();
   };
 
-  // Show active session if exists
-  if (session.phase !== 'idle' && session.swapIntent) {
-    return (
-      <SwapCommitReveal
-        swapIntent={session.swapIntent}
-        onReveal={revealSwap}
-        onCancel={handleCommitRevealCancel}
-        timeRemaining={session.timeRemaining}
-      />
-    );
-  }
+  // Handle success animation completion
+  const handleSuccessComplete = () => {
+    setShowSuccessAnimation(false);
+    setCompletedSwap(null);
+    resetSwap();
+  };
 
-  // Show preview if requested
-  if (showPreview && quote && inputToken && outputToken) {
-    return (
-      <SwapPreview
-        quote={quote}
-        inputToken={inputToken}
-        outputToken={outputToken}
-        inputAmount={inputAmount}
-        config={config}
-        onConfirm={handlePreviewConfirm}
-        onCancel={handlePreviewCancel}
-        isCommitting={createSwapMutation.isPending}
-        mevProtection={config.mevProtection}
-      />
-    );
-  }
+  // Enhanced reveal with success tracking
+  const handleReveal = async () => {
+    if (!session.swapIntent) return;
+    
+    setLoading(true, 'Executing your protected swap...');
+    
+    try {
+      await revealSwap();
+      
+      // Show success animation
+      if (inputToken && outputToken) {
+        setCompletedSwap({
+          from: { symbol: inputToken.symbol, amount: inputAmount },
+          to: { symbol: outputToken.symbol, amount: session.swapIntent.outputAmount }
+        });
+        setShowSuccessAnimation(true);
+      }
+      
+      incrementSwapCount();
+    } catch (error) {
+      console.error('Reveal failed:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Show main swap form
   return (
-    <SwapForm
-      chainType={chainType}
-      tokens={tokens}
-      onSwap={handleSwapInitiated}
-      isConnected={isConnected}
-    />
+    <ErrorBoundary>
+      <div className="space-y-4">
+        <NetworkStatus />
+        
+        {/* Success Animation */}
+        {showSuccessAnimation && completedSwap && (
+          <SwapSuccessAnimation
+            fromToken={completedSwap.from}
+            toToken={completedSwap.to}
+            onComplete={handleSuccessComplete}
+          />
+        )}
+
+        {/* Show active session if exists */}
+        {!showSuccessAnimation && session.phase !== 'idle' && session.swapIntent && (
+          <>
+            <SwapProgressTracker
+              swapIntent={session.swapIntent}
+              currentPhase={session.phase === 'commit' ? 'commit' : session.phase === 'reveal' ? 'reveal' : 'execute'}
+              mevProtection={session.swapIntent.config.mevProtection}
+            />
+            
+            <SwapCommitReveal
+              swapIntent={session.swapIntent}
+              onReveal={handleReveal}
+              onCancel={handleCommitRevealCancel}
+              timeRemaining={session.timeRemaining}
+            />
+          </>
+        )}
+
+        {/* Show preview if requested */}
+        {!showSuccessAnimation && !session.swapIntent && showPreview && quote && inputToken && outputToken && (
+          <SwapPreview
+            quote={quote}
+            inputToken={inputToken}
+            outputToken={outputToken}
+            inputAmount={inputAmount}
+            config={config}
+            onConfirm={handlePreviewConfirm}
+            onCancel={handlePreviewCancel}
+            isCommitting={createSwapMutation.isPending}
+            mevProtection={config.mevProtection}
+          />
+        )}
+
+        {/* Show main swap form */}
+        {!showSuccessAnimation && !session.swapIntent && !showPreview && (
+          <>
+            {!isConnected ? (
+              <SkeletonSwapForm />
+            ) : (
+              <SwapForm
+                chainType={chainType}
+                tokens={tokens}
+                onSwap={handleSwapInitiated}
+                isConnected={isConnected}
+              />
+            )}
+          </>
+        )}
+
+        {/* Loading States */}
+        {createSwapMutation.isPending && (
+          <StatusIndicator
+            status="loading"
+            message="Creating swap..."
+          />
+        )}
+
+        {/* Global Loading Overlay */}
+        <LoadingOverlay
+          isLoading={false} // Controlled by app store
+          message="Processing your request..."
+        />
+      </div>
+    </ErrorBoundary>
   );
 };
