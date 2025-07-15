@@ -1,7 +1,7 @@
 import { Header } from "@/components/Header";
 import { HeroSection } from "@/components/HeroSection";
 import { ChainSelector } from "@/components/swap/ChainSelector";
-import { SwapForm } from "@/components/swap/SwapForm";
+import { SwapFlow } from "@/components/swap/SwapFlow";
 import { ConnectWalletButton } from "@/components/wallet/ConnectWalletButton";
 import { WalletInfo } from "@/components/wallet/WalletInfo";
 import { useState } from "react";
@@ -55,10 +55,9 @@ const Index = () => {
           </div>
           
           <div className="lg:col-span-2 flex justify-center">
-            <SwapForm
+            <SwapFlow
               chainType={selectedChain}
               tokens={tokens}
-              onSwap={handleSwap}
               isConnected={isConnected}
             />
           </div>
