@@ -171,7 +171,7 @@ export const SwapForm = ({
             <TokenSelector
               selectedToken={inputToken}
               onTokenSelect={setInputToken}
-              tokens={tokens}
+              chainType={chainType}
               label="Select Token"
               disabled={!isConnected}
             />
@@ -211,7 +211,7 @@ export const SwapForm = ({
             <TokenSelector
               selectedToken={outputToken}
               onTokenSelect={setOutputToken}
-              tokens={tokens}
+              chainType={chainType}
               label="Select Token"
               disabled={!isConnected}
             />

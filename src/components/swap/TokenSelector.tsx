@@ -2,124 +2,304 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, ChevronDown } from "lucide-react";
-import { useState } from "react";
-import { Token } from "@/types";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Search, ChevronDown, Star, Clock, AlertCircle, Loader2 } from "lucide-react";
+import { useState, useMemo, useCallback } from "react";
+import { Token, TokenWithMetadata, ChainType } from "@/types";
+import { useTokenData } from "@/hooks/useTokenData";
+import { TokenListItem, TokenListItemSkeleton } from "./TokenListItem";
 
 interface TokenSelectorProps {
   selectedToken?: Token;
   onTokenSelect: (token: Token) => void;
-  tokens: Token[];
+  chainType: ChainType;
   label?: string;
   disabled?: boolean;
+  showBalance?: boolean;
+  showPrice?: boolean;
+  placeholder?: string;
 }
 
 export const TokenSelector = ({ 
   selectedToken, 
   onTokenSelect, 
-  tokens,
+  chainType,
   label = "Select Token",
-  disabled = false
+  disabled = false,
+  showBalance = true,
+  showPrice = true,
+  placeholder = "Search by name or symbol"
 }: TokenSelectorProps) => {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState("popular");
 
-  const filteredTokens = tokens.filter(token =>
-    token.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    token.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Fetch token data
+  const {
+    tokens,
+    popularTokens,
+    recentTokens,
+    isLoading,
+    error,
+    addRecentToken,
+  } = useTokenData(chainType);
 
-  const handleTokenSelect = (token: Token) => {
+  // Filter tokens based on search query
+  const filteredTokens = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return tokens;
+    }
+
+    const query = searchQuery.toLowerCase().trim();
+    return tokens.filter(token =>
+      token.symbol.toLowerCase().includes(query) ||
+      token.name.toLowerCase().includes(query) ||
+      token.address.toLowerCase().includes(query)
+    );
+  }, [tokens, searchQuery]);
+
+  // Group tokens by category
+  const tokenGroups = useMemo(() => {
+    if (searchQuery.trim()) {
+      // When searching, show all filtered results
+      return {
+        filtered: filteredTokens,
+        popular: [],
+        recent: [],
+        all: [],
+      };
+    }
+
+    return {
+      filtered: [],
+      popular: popularTokens.slice(0, 8),
+      recent: recentTokens,
+      all: tokens,
+    };
+  }, [filteredTokens, popularTokens, recentTokens, tokens, searchQuery]);
+
+  const handleTokenSelect = useCallback((token: TokenWithMetadata) => {
     onTokenSelect(token);
+    addRecentToken(token);
     setOpen(false);
     setSearchQuery("");
-  };
+    setActiveTab("popular");
+  }, [onTokenSelect, addRecentToken]);
+
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchQuery(value);
+    if (value.trim()) {
+      setActiveTab("search");
+    } else {
+      setActiveTab("popular");
+    }
+  }, []);
 
   return (
     <>
       <Button
         variant="outline"
-        className="h-12 px-4 justify-between"
+        className="h-12 px-4 justify-between min-w-[120px]"
         onClick={() => setOpen(true)}
         disabled={disabled}
       >
         {selectedToken ? (
           <div className="flex items-center gap-2">
-            <div 
-              className="w-6 h-6 rounded-full bg-gradient-cosmic"
-              style={{
-                backgroundImage: selectedToken.logoURI ? `url(${selectedToken.logoURI})` : undefined
-              }}
-            />
-            <span>{selectedToken.symbol}</span>
+            <div className="w-6 h-6 rounded-full bg-gradient-cosmic flex items-center justify-center overflow-hidden">
+              {selectedToken.logoURI ? (
+                <img 
+                  src={selectedToken.logoURI} 
+                  alt={selectedToken.symbol}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-xs font-bold">
+                  {selectedToken.symbol.charAt(0)}
+                </span>
+              )}
+            </div>
+            <span className="font-medium">{selectedToken.symbol}</span>
           </div>
         ) : (
           <span className="text-muted-foreground">{label}</span>
         )}
-        <ChevronDown className="w-4 h-4" />
+        <ChevronDown className="w-4 h-4 ml-2" />
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Select Token</DialogTitle>
+        <DialogContent className="max-w-md max-h-[80vh] p-0">
+          <DialogHeader className="p-6 pb-4">
+            <DialogTitle className="flex items-center gap-2">
+              Select Token
+              <Badge variant="outline" className="text-xs">
+                {chainType === 'evm' ? 'EVM' : 'Solana'}
+              </Badge>
+            </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="px-6 pb-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Search tokens..."
+                placeholder={placeholder}
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="pl-10"
+                autoFocus
               />
             </div>
+          </div>
 
-            <div className="max-h-96 overflow-y-auto space-y-2">
-              {filteredTokens.map((token) => (
-                <Button
-                  key={token.address}
-                  variant="ghost"
-                  className="w-full h-16 p-3 justify-between hover:bg-secondary/50"
-                  onClick={() => handleTokenSelect(token)}
-                >
-                  <div className="flex items-center gap-3">
-                    <div 
-                      className="w-10 h-10 rounded-full bg-gradient-cosmic flex items-center justify-center"
-                      style={{
-                        backgroundImage: token.logoURI ? `url(${token.logoURI})` : undefined
-                      }}
-                    >
-                      {!token.logoURI && (
-                        <span className="text-sm font-bold">
-                          {token.symbol.charAt(0)}
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-left">
-                      <div className="font-medium">{token.symbol}</div>
-                      <div className="text-sm text-muted-foreground">{token.name}</div>
-                    </div>
-                  </div>
-                  
-                  {token.balance && (
-                    <div className="text-right">
-                      <div className="text-sm font-medium">{token.balance}</div>
-                      <Badge variant="outline" className="text-xs">
-                        {token.chainId ? `Chain ${token.chainId}` : 'Solana'}
-                      </Badge>
-                    </div>
-                  )}
-                </Button>
-              ))}
-
-              {filteredTokens.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  No tokens found matching "{searchQuery}"
-                </div>
-              )}
+          {error ? (
+            <div className="px-6 pb-6">
+              <div className="flex items-center gap-2 p-4 rounded-lg bg-destructive/10 border border-destructive/20">
+                <AlertCircle className="w-4 h-4 text-destructive" />
+                <span className="text-sm text-destructive">
+                  Failed to load tokens. Please try again.
+                </span>
+              </div>
             </div>
+          ) : isLoading ? (
+            <div className="px-6 pb-6">
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin" />
+                <span className="ml-2 text-sm text-muted-foreground">
+                  Loading tokens...
+                </span>
+              </div>
+            </div>
+          ) : (
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+              {!searchQuery.trim() && (
+                <TabsList className="mx-6 grid w-auto grid-cols-3">
+                  <TabsTrigger value="popular" className="flex items-center gap-1">
+                    <Star className="w-3 h-3" />
+                    Popular
+                  </TabsTrigger>
+                  {recentTokens.length > 0 && (
+                    <TabsTrigger value="recent" className="flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      Recent
+                    </TabsTrigger>
+                  )}
+                  <TabsTrigger value="all">All</TabsTrigger>
+                </TabsList>
+              )}
+
+              <div className="flex-1 min-h-0">
+                {/* Search Results */}
+                {searchQuery.trim() && (
+                  <ScrollArea className="h-96 px-6 pb-6">
+                    {tokenGroups.filtered.length > 0 ? (
+                      <div className="space-y-1">
+                        {tokenGroups.filtered.map((token) => (
+                          <TokenListItem
+                            key={token.address}
+                            token={token}
+                            onSelect={handleTokenSelect}
+                            chainType={chainType}
+                            showBalance={showBalance}
+                            showPrice={showPrice}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                        <p>No tokens found for "{searchQuery}"</p>
+                        <p className="text-sm mt-1">Try a different search term</p>
+                      </div>
+                    )}
+                  </ScrollArea>
+                )}
+
+                {/* Popular Tokens */}
+                {!searchQuery.trim() && (
+                  <TabsContent value="popular" className="mt-0">
+                    <ScrollArea className="h-96 px-6 pb-6">
+                      {tokenGroups.popular.length > 0 ? (
+                        <div className="space-y-1">
+                          {tokenGroups.popular.map((token) => (
+                            <TokenListItem
+                              key={token.address}
+                              token={token}
+                              onSelect={handleTokenSelect}
+                              chainType={chainType}
+                              showBalance={showBalance}
+                              showPrice={showPrice}
+                              isPopular
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <Star className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                          <p>No popular tokens available</p>
+                        </div>
+                      )}
+                    </ScrollArea>
+                  </TabsContent>
+                )}
+
+                {/* Recent Tokens */}
+                {!searchQuery.trim() && recentTokens.length > 0 && (
+                  <TabsContent value="recent" className="mt-0">
+                    <ScrollArea className="h-96 px-6 pb-6">
+                      <div className="space-y-1">
+                        {tokenGroups.recent.map((token) => (
+                          <TokenListItem
+                            key={token.address}
+                            token={token}
+                            onSelect={handleTokenSelect}
+                            chainType={chainType}
+                            showBalance={showBalance}
+                            showPrice={showPrice}
+                            isRecent
+                          />
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </TabsContent>
+                )}
+
+                {/* All Tokens */}
+                {!searchQuery.trim() && (
+                  <TabsContent value="all" className="mt-0">
+                    <ScrollArea className="h-96 px-6 pb-6">
+                      {tokenGroups.all.length > 0 ? (
+                        <div className="space-y-1">
+                          {tokenGroups.all.map((token) => (
+                            <TokenListItem
+                              key={token.address}
+                              token={token}
+                              onSelect={handleTokenSelect}
+                              chainType={chainType}
+                              showBalance={showBalance}
+                              showPrice={showPrice}
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="space-y-1">
+                          {Array.from({ length: 8 }).map((_, i) => (
+                            <TokenListItemSkeleton key={i} />
+                          ))}
+                        </div>
+                      )}
+                    </ScrollArea>
+                  </TabsContent>
+                )}
+              </div>
+            </Tabs>
+          )}
+
+          {/* Footer info */}
+          <div className="px-6 pb-4 pt-2 border-t">
+            <p className="text-xs text-muted-foreground text-center">
+              Always verify token contracts before trading
+            </p>
           </div>
         </DialogContent>
       </Dialog>
