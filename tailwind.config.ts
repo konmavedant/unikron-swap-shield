@@ -61,7 +61,25 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				cosmic: {
+					primary: 'hsl(var(--cosmic-primary))',
+					secondary: 'hsl(var(--cosmic-secondary))'
+				},
+				shield: {
+					cyan: 'hsl(var(--shield-cyan))',
+					glow: 'hsl(var(--shield-glow))'
 				}
+			},
+			backgroundImage: {
+				'gradient-cosmic': 'var(--gradient-cosmic)',
+				'gradient-shield': 'var(--gradient-shield)',
+				'gradient-background': 'var(--gradient-background)'
+			},
+			boxShadow: {
+				'glow-primary': 'var(--glow-primary)',
+				'glow-shield': 'var(--glow-shield)',
+				'card': 'var(--shadow-card)'
 			},
 			borderRadius: {
 				lg: 'var(--radius)',

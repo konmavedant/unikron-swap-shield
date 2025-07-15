@@ -1,0 +1,35 @@
+import { Button } from "@/components/ui/button";
+import { Shield, Zap } from "lucide-react";
+import unikronLogo from "@/assets/unikron-logo.png";
+
+export const Header = () => {
+  return (
+    <header className="flex items-center justify-between p-6 border-b border-border/50">
+      <div className="flex items-center gap-3">
+        <img 
+          src={unikronLogo} 
+          alt="UNIKRON" 
+          className="w-10 h-10"
+        />
+        <div className="flex flex-col">
+          <h1 className="text-2xl font-bold bg-gradient-cosmic bg-clip-text text-transparent">
+            UNIKRON
+          </h1>
+          <p className="text-xs text-muted-foreground">Cross-Chain DEX Aggregator</p>
+        </div>
+      </div>
+      
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card border border-border/50">
+          <Shield className="w-4 h-4 text-shield-cyan" />
+          <span className="text-sm text-shield-cyan font-medium">MEV Protected</span>
+        </div>
+        
+        <Button variant="cosmic" size="sm">
+          <Zap className="w-4 h-4" />
+          Connect Wallet
+        </Button>
+      </div>
+    </header>
+  );
+};
