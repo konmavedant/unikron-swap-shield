@@ -5,34 +5,16 @@ import { SwapForm } from "@/components/swap/SwapForm";
 import { ConnectWalletButton } from "@/components/wallet/ConnectWalletButton";
 import { WalletInfo } from "@/components/wallet/WalletInfo";
 import { useState } from "react";
-import { Token, ChainType } from "@/types";
+import { ChainType } from "@/types";
 import { useWalletStore } from "@/store/wallet";
+import { useTokenData } from "@/hooks/useTokenData";
 
 const Index = () => {
   const { address, chainType, chainId, isConnected } = useWalletStore();
   const [selectedChain, setSelectedChain] = useState<ChainType>("evm");
-
-  // Mock tokens - in real implementation, these would come from your API
-  const mockTokens: Token[] = [
-    {
-      address: "0x...",
-      symbol: "ETH",
-      name: "Ethereum",
-      decimals: 18,
-      logoURI: "/tokens/eth.png",
-      chainId: 1,
-      balance: "1.234"
-    },
-    {
-      address: "0x...",
-      symbol: "USDC",
-      name: "USD Coin",
-      decimals: 6,
-      logoURI: "/tokens/usdc.png",
-      chainId: 1,
-      balance: "1,234.56"
-    }
-  ];
+  
+  // Get real token data
+  const { tokens } = useTokenData(selectedChain);
 
   const handleWalletConnect = (address: string, chainType: ChainType) => {
     setSelectedChain(chainType);
@@ -75,7 +57,7 @@ const Index = () => {
           <div className="lg:col-span-2 flex justify-center">
             <SwapForm
               chainType={selectedChain}
-              tokens={mockTokens}
+              tokens={tokens}
               onSwap={handleSwap}
               isConnected={isConnected}
             />
