@@ -2,17 +2,25 @@ import { Header } from "@/components/Header";
 import { HeroSection } from "@/components/HeroSection";
 import { ChainSelector } from "@/components/swap/ChainSelector";
 import { SwapFlow } from "@/components/swap/SwapFlow";
-import { ConnectWalletButton } from "@/components/wallet/ConnectWalletButton";
+import { WalletConnectButton } from "@/components/wallet/WalletConnectButton";
 import { WalletInfo } from "@/components/wallet/WalletInfo";
 import { UserOnboarding } from "@/components/ui/user-onboarding";
+import { useWalletConnection } from "@/hooks/useWalletConnection";
 import { useState, useEffect } from "react";
 import { ChainType } from "@/types";
-import { useWalletStore } from "@/store/wallet";
 import { useAppStore } from "@/store/app";
 import { useTokenData } from "@/hooks/useTokenData";
 
 const Index = () => {
-  const { address, chainType, chainId, isConnected } = useWalletStore();
+  const { 
+    evmConnected, 
+    evmAddress, 
+    chainId, 
+    solanaConnected, 
+    solanaAddress, 
+    isAnyWalletConnected,
+    disconnectAll 
+  } = useWalletConnection();
   const { settings } = useAppStore();
   const [selectedChain, setSelectedChain] = useState<ChainType>("evm");
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -31,8 +39,8 @@ const Index = () => {
     setSelectedChain(chainType);
   };
 
-  const handleWalletDisconnect = () => {
-    // Wallet store handles the state reset
+  const handleWalletDisconnect = async () => {
+    await disconnectAll();
   };
 
   const handleSwap = (quote: any) => {
@@ -67,16 +75,16 @@ const Index = () => {
             <ChainSelector />
             
             <div className="flex justify-center">
-              {isConnected ? (
+              {isAnyWalletConnected ? (
                 <WalletInfo
-                  address={address!}
-                  chainType={chainType!}
+                  address={(evmAddress || solanaAddress)!}
+                  chainType={evmConnected ? 'evm' : 'solana'}
                   chainId={chainId}
                   balance="1.234"
                   onDisconnect={handleWalletDisconnect}
                 />
               ) : (
-                <ConnectWalletButton onConnect={handleWalletConnect} />
+                <WalletConnectButton onConnect={handleWalletConnect} />
               )}
             </div>
           </div>
@@ -85,7 +93,7 @@ const Index = () => {
             <SwapFlow
               chainType={selectedChain}
               tokens={tokens}
-              isConnected={isConnected}
+              isConnected={isAnyWalletConnected}
             />
           </div>
         </div>

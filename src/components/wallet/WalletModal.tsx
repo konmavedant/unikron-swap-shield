@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Wallet, Shield, Zap, ExternalLink } from "lucide-react";
-import { useAccount, useConnect, useDisconnect } from 'wagmi';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useAccount } from 'wagmi';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletStore } from "@/store/wallet";
 import { useEffect } from "react";
@@ -18,11 +19,9 @@ interface WalletModalProps {
 export const WalletModal = ({ open, onClose, onConnect }: WalletModalProps) => {
   // EVM wallet hooks
   const { address: evmAddress, isConnected: evmConnected, chainId } = useAccount();
-  const { connect: evmConnect, connectors } = useConnect();
-  const { disconnect: evmDisconnect } = useDisconnect();
 
   // Solana wallet hooks  
-  const { publicKey: solanaAddress, connected: solanaConnected, select, connect: solanaConnect, wallets } = useWallet();
+  const { publicKey: solanaAddress, connected: solanaConnected, select, connect: solanaConnect, disconnect: solanaDisconnect, wallets } = useWallet();
 
   // Global wallet store
   const { connect: storeConnect, setConnecting } = useWalletStore();
@@ -34,7 +33,7 @@ export const WalletModal = ({ open, onClose, onConnect }: WalletModalProps) => {
       onConnect?.(evmAddress, 'evm');
       onClose();
       toast({
-        title: "Wallet Connected",
+        title: "EVM Wallet Connected",
         description: `Connected to ${evmAddress.slice(0, 6)}...${evmAddress.slice(-4)}`,
       });
     }
@@ -48,44 +47,41 @@ export const WalletModal = ({ open, onClose, onConnect }: WalletModalProps) => {
       onConnect?.(address, 'solana');
       onClose();
       toast({
-        title: "Wallet Connected", 
+        title: "Solana Wallet Connected", 
         description: `Connected to ${address.slice(0, 6)}...${address.slice(-4)}`,
       });
     }
   }, [solanaConnected, solanaAddress]);
 
-  const handleEvmWalletConnect = async (connector: any) => {
+  const handlePhantomConnect = async () => {
     try {
       setConnecting(true);
-      await evmConnect({ connector });
+      
+      // Find Phantom wallet
+      const phantomWallet = wallets.find(wallet => wallet.adapter.name === 'Phantom');
+      
+      if (phantomWallet) {
+        // Select Phantom wallet
+        select(phantomWallet.adapter.name);
+        
+        // Connect to Phantom
+        await solanaConnect();
+      } else {
+        throw new Error('Phantom wallet not found');
+      }
     } catch (error) {
-      console.error('EVM wallet connection failed:', error);
+      console.error('Phantom wallet connection failed:', error);
       toast({
         title: "Connection Failed",
-        description: "Failed to connect to EVM wallet",
+        description: "Failed to connect to Phantom wallet. Please make sure Phantom is installed.",
         variant: "destructive",
       });
       setConnecting(false);
     }
   };
 
-  const handleSolanaWalletConnect = async (walletName: string) => {
-    try {
-      setConnecting(true);
-      const wallet = wallets.find(w => w.adapter.name === walletName);
-      if (wallet) {
-        select(wallet.adapter.name);
-        await solanaConnect();
-      }
-    } catch (error) {
-      console.error('Solana wallet connection failed:', error);
-      toast({
-        title: "Connection Failed",
-        description: "Failed to connect to Solana wallet",
-        variant: "destructive",
-      });
-      setConnecting(false);
-    }
+  const openPhantomDownload = () => {
+    window.open('https://phantom.app/', '_blank');
   };
 
   return (
@@ -120,48 +116,45 @@ export const WalletModal = ({ open, onClose, onConnect }: WalletModalProps) => {
             </div>
 
             <div className="space-y-2">
-              {/* Only show RainbowKit connector */}
-              {connectors.filter(connector => 
-                connector.name === 'RainbowKit' || 
-                connector.id === 'rainbowkit' ||
-                connector.name.toLowerCase().includes('rainbow')
-              ).map((connector) => (
-                <Button
-                  key={connector.id}
-                  variant="outline"
-                  className="w-full justify-between h-12"
-                  onClick={() => handleEvmWalletConnect(connector)}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gradient-rainbow flex items-center justify-center">
-                      🌈
-                    </div>
-                    RainbowKit
-                  </div>
-                  <ExternalLink className="w-4 h-4" />
-                </Button>
-              ))}
-              
-              {/* Fallback if RainbowKit connector not found, show first connector */}
-              {connectors.filter(connector => 
-                connector.name === 'RainbowKit' || 
-                connector.id === 'rainbowkit' ||
-                connector.name.toLowerCase().includes('rainbow')
-              ).length === 0 && connectors.length > 0 && (
-                <Button
-                  variant="outline"
-                  className="w-full justify-between h-12"
-                  onClick={() => handleEvmWalletConnect(connectors[0])}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gradient-rainbow flex items-center justify-center">
-                      🌈
-                    </div>
-                    RainbowKit
-                  </div>
-                  <ExternalLink className="w-4 h-4" />
-                </Button>
-              )}
+              {/* RainbowKit Connect Button */}
+              <div className="flex justify-center">
+                <ConnectButton.Custom>
+                  {({
+                    account,
+                    chain,
+                    openAccountModal,
+                    openChainModal,
+                    openConnectModal,
+                    authenticationStatus,
+                    mounted,
+                  }) => {
+                    const ready = mounted && authenticationStatus !== 'loading';
+                    const connected =
+                      ready &&
+                      account &&
+                      chain &&
+                      (!authenticationStatus ||
+                        authenticationStatus === 'authenticated');
+
+                    return (
+                      <Button
+                        variant="outline"
+                        className="w-full justify-between h-12"
+                        onClick={connected ? openAccountModal : openConnectModal}
+                        disabled={!ready}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-gradient-rainbow flex items-center justify-center">
+                            🌈
+                          </div>
+                          {connected ? `${account.displayName}` : 'RainbowKit'}
+                        </div>
+                        <ExternalLink className="w-4 h-4" />
+                      </Button>
+                    );
+                  }}
+                </ConnectButton.Custom>
+              </div>
             </div>
           </TabsContent>
 
@@ -175,36 +168,42 @@ export const WalletModal = ({ open, onClose, onConnect }: WalletModalProps) => {
             </div>
 
             <div className="space-y-2">
-              {/* Only show Phantom wallet */}
-              {wallets.filter(wallet => 
-                wallet.adapter.name === 'Phantom' && 
-                (wallet.readyState === 'Installed' || wallet.readyState === 'Loadable')
-              ).map((wallet) => (
+              {/* Phantom Wallet Button */}
+              {solanaConnected ? (
                 <Button
-                  key={wallet.adapter.name}
                   variant="outline"
                   className="w-full justify-between h-12"
-                  onClick={() => handleSolanaWalletConnect(wallet.adapter.name)}
+                  onClick={() => {
+                    solanaDisconnect();
+                    onClose();
+                  }}
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full flex items-center justify-center">
-                      {wallet.adapter.icon ? (
-                        <img src={wallet.adapter.icon} alt={wallet.adapter.name} className="w-8 h-8 rounded-full" />
-                      ) : (
-                        <span>👻</span>
-                      )}
+                      👻
+                    </div>
+                    {solanaAddress ? `${solanaAddress.toString().slice(0, 6)}...${solanaAddress.toString().slice(-4)}` : 'Phantom'}
+                  </div>
+                  <span className="text-xs">Disconnect</span>
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  className="w-full justify-between h-12"
+                  onClick={handlePhantomConnect}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center">
+                      👻
                     </div>
                     Phantom
                   </div>
                   <ExternalLink className="w-4 h-4" />
                 </Button>
-              ))}
+              )}
               
-              {/* Show fallback if Phantom not detected */}
-              {wallets.filter(wallet => 
-                wallet.adapter.name === 'Phantom' && 
-                (wallet.readyState === 'Installed' || wallet.readyState === 'Loadable')
-              ).length === 0 && (
+              {/* Install Phantom if not detected */}
+              {!window.phantom && !solanaConnected && (
                 <div className="text-center py-4 text-muted-foreground">
                   <p className="text-sm">Phantom wallet not detected.</p>
                   <p className="text-xs mt-1">Please install Phantom wallet to continue.</p>
@@ -212,7 +211,7 @@ export const WalletModal = ({ open, onClose, onConnect }: WalletModalProps) => {
                     variant="outline" 
                     size="sm" 
                     className="mt-2"
-                    onClick={() => window.open('https://phantom.app/', '_blank')}
+                    onClick={openPhantomDownload}
                   >
                     Install Phantom
                   </Button>
