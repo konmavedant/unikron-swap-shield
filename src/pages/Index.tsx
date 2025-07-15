@@ -4,17 +4,28 @@ import { ChainSelector } from "@/components/swap/ChainSelector";
 import { SwapFlow } from "@/components/swap/SwapFlow";
 import { ConnectWalletButton } from "@/components/wallet/ConnectWalletButton";
 import { WalletInfo } from "@/components/wallet/WalletInfo";
-import { useState } from "react";
+import { UserOnboarding } from "@/components/ui/user-onboarding";
+import { useState, useEffect } from "react";
 import { ChainType } from "@/types";
 import { useWalletStore } from "@/store/wallet";
+import { useAppStore } from "@/store/app";
 import { useTokenData } from "@/hooks/useTokenData";
 
 const Index = () => {
   const { address, chainType, chainId, isConnected } = useWalletStore();
+  const { settings } = useAppStore();
   const [selectedChain, setSelectedChain] = useState<ChainType>("evm");
+  const [showOnboarding, setShowOnboarding] = useState(false);
   
   // Get real token data
   const { tokens } = useTokenData(selectedChain);
+
+  // Check if user needs onboarding
+  useEffect(() => {
+    if (!settings.hasCompletedOnboarding) {
+      setShowOnboarding(true);
+    }
+  }, [settings.hasCompletedOnboarding]);
 
   const handleWalletConnect = (address: string, chainType: ChainType) => {
     setSelectedChain(chainType);
@@ -28,8 +39,24 @@ const Index = () => {
     console.log("Executing swap with quote:", quote);
   };
 
+  const handleOnboardingComplete = () => {
+    setShowOnboarding(false);
+  };
+
+  const handleOnboardingSkip = () => {
+    setShowOnboarding(false);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-background">
+      {/* User Onboarding */}
+      {showOnboarding && (
+        <UserOnboarding 
+          onComplete={handleOnboardingComplete}
+          onSkip={handleOnboardingSkip}
+        />
+      )}
+      
       <Header />
       
       <main className="container mx-auto px-6 py-8 space-y-12">

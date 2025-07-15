@@ -14,6 +14,7 @@ interface AppSettings {
   soundEnabled: boolean;
   animationsEnabled: boolean;
   compactMode: boolean;
+  hasCompletedOnboarding: boolean;
 }
 
 // UI state for better UX
@@ -99,6 +100,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   soundEnabled: true,
   animationsEnabled: true,
   compactMode: false,
+  hasCompletedOnboarding: false,
 };
 
 const DEFAULT_UI_STATE: UIState = {
