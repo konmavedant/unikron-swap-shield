@@ -12,6 +12,8 @@ import { SwapQuoteDisplay } from "./SwapQuoteDisplay";
 import { Token, SwapQuote, ChainType } from "@/types";
 import { useSwapQuote } from "@/hooks/useSwapQuote";
 import { useSwapStore } from "@/store/swap";
+import { TokenBalanceDisplay } from "./TokenBalanceDisplay";
+import { useErrorHandler } from "@/hooks/useErrorHandler";
 
 interface SwapFormProps {
   tokens: Token[];
@@ -46,6 +48,7 @@ export const SwapForm = ({
   } = useSwapStore();
 
   const { hasValidInputs } = useSwapQuote();
+  const { handleError } = useErrorHandler();
 
   // Update MEV protection in config
   useEffect(() => {
@@ -140,7 +143,12 @@ export const SwapForm = ({
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">From</span>
-            <span className="text-muted-foreground">Balance: 0.00</span>
+            <TokenBalanceDisplay 
+              token={inputToken}
+              chainType={chainType}
+              isConnected={isConnected}
+              className="text-sm"
+            />
           </div>
             <div className="flex gap-2">
             <div className="flex-1">
@@ -180,7 +188,12 @@ export const SwapForm = ({
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">To</span>
-            <span className="text-muted-foreground">Balance: 0.00</span>
+            <TokenBalanceDisplay 
+              token={outputToken}
+              chainType={chainType}
+              isConnected={isConnected}
+              className="text-sm"
+            />
           </div>
             <div className="flex gap-2">
             <div className="flex-1">
