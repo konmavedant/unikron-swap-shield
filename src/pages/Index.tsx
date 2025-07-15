@@ -1,9 +1,70 @@
 import { Header } from "@/components/Header";
 import { HeroSection } from "@/components/HeroSection";
-import { ChainSelector } from "@/components/ChainSelector";
-import { SwapInterface } from "@/components/SwapInterface";
+import { ChainSelector } from "@/components/swap/ChainSelector";
+import { SwapForm } from "@/components/swap/SwapForm";
+import { ConnectWalletButton } from "@/components/wallet/ConnectWalletButton";
+import { WalletInfo } from "@/components/wallet/WalletInfo";
+import { useState } from "react";
+import { Token, ChainType } from "@/types";
 
 const Index = () => {
+  const [walletState, setWalletState] = useState<{
+    address: string | null;
+    chainType: ChainType | null;
+    chainId?: number;
+    isConnected: boolean;
+  }>({
+    address: null,
+    chainType: null,
+    isConnected: false,
+  });
+
+  const [selectedChain, setSelectedChain] = useState<ChainType>("evm");
+
+  // Mock tokens - in real implementation, these would come from your API
+  const mockTokens: Token[] = [
+    {
+      address: "0x...",
+      symbol: "ETH",
+      name: "Ethereum",
+      decimals: 18,
+      logoURI: "/tokens/eth.png",
+      chainId: 1,
+      balance: "1.234"
+    },
+    {
+      address: "0x...",
+      symbol: "USDC",
+      name: "USD Coin",
+      decimals: 6,
+      logoURI: "/tokens/usdc.png",
+      chainId: 1,
+      balance: "1,234.56"
+    }
+  ];
+
+  const handleWalletConnect = (address: string, chainType: ChainType) => {
+    setWalletState({
+      address,
+      chainType,
+      chainId: chainType === 'evm' ? 1 : undefined,
+      isConnected: true,
+    });
+    setSelectedChain(chainType);
+  };
+
+  const handleWalletDisconnect = () => {
+    setWalletState({
+      address: null,
+      chainType: null,
+      isConnected: false,
+    });
+  };
+
+  const handleSwap = (quote: any) => {
+    console.log("Executing swap with quote:", quote);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-background">
       <Header />
@@ -12,12 +73,31 @@ const Index = () => {
         <HeroSection />
         
         <div className="grid lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 space-y-6">
             <ChainSelector />
+            
+            <div className="flex justify-center">
+              {walletState.isConnected ? (
+                <WalletInfo
+                  address={walletState.address!}
+                  chainType={walletState.chainType!}
+                  chainId={walletState.chainId}
+                  balance="1.234"
+                  onDisconnect={handleWalletDisconnect}
+                />
+              ) : (
+                <ConnectWalletButton onConnect={handleWalletConnect} />
+              )}
+            </div>
           </div>
           
           <div className="lg:col-span-2 flex justify-center">
-            <SwapInterface />
+            <SwapForm
+              chainType={selectedChain}
+              tokens={mockTokens}
+              onSwap={handleSwap}
+              isConnected={walletState.isConnected}
+            />
           </div>
         </div>
         

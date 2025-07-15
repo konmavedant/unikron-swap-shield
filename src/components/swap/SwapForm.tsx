@@ -4,12 +4,30 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { ArrowDownUp, Shield, Zap, Settings } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { TokenSelector } from "./TokenSelector";
+import { Token, SwapQuote, ChainType } from "@/types";
 
-export const SwapInterface = () => {
+interface SwapFormProps {
+  chainType: ChainType;
+  tokens: Token[];
+  onSwap?: (quote: SwapQuote) => void;
+  isConnected?: boolean;
+}
+
+export const SwapForm = ({ 
+  chainType, 
+  tokens, 
+  onSwap, 
+  isConnected = false 
+}: SwapFormProps) => {
   const [mevProtection, setMevProtection] = useState(true);
   const [fromAmount, setFromAmount] = useState("");
   const [toAmount, setToAmount] = useState("");
+  const [fromToken, setFromToken] = useState<Token | undefined>();
+  const [toToken, setToToken] = useState<Token | undefined>();
+  const [quote, setQuote] = useState<SwapQuote | null>(null);
+  const [isLoadingQuote, setIsLoadingQuote] = useState(false);
 
   return (
     <Card className="w-full max-w-md mx-auto shadow-card">
@@ -40,7 +58,7 @@ export const SwapInterface = () => {
             <span className="text-muted-foreground">From</span>
             <span className="text-muted-foreground">Balance: 0.00</span>
           </div>
-          <div className="flex gap-2">
+            <div className="flex gap-2">
             <div className="flex-1">
               <Input
                 type="number"
@@ -48,20 +66,36 @@ export const SwapInterface = () => {
                 value={fromAmount}
                 onChange={(e) => setFromAmount(e.target.value)}
                 className="text-lg h-12"
+                disabled={!isConnected}
               />
             </div>
-            <Button variant="outline" className="h-12 px-4">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-gradient-cosmic"></div>
-                <span>ETH</span>
-              </div>
-            </Button>
+            <TokenSelector
+              selectedToken={fromToken}
+              onTokenSelect={setFromToken}
+              tokens={tokens}
+              label="Select Token"
+              disabled={!isConnected}
+            />
           </div>
         </div>
 
         {/* Swap Button */}
         <div className="flex justify-center">
-          <Button variant="ghost" size="icon" className="rounded-full border border-border/50">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="rounded-full border border-border/50"
+            onClick={() => {
+              // Swap token positions
+              const tempToken = fromToken;
+              const tempAmount = fromAmount;
+              setFromToken(toToken);
+              setToToken(tempToken);
+              setFromAmount(toAmount);
+              setToAmount(tempAmount);
+            }}
+            disabled={!isConnected}
+          >
             <ArrowDownUp className="w-4 h-4" />
           </Button>
         </div>
@@ -72,7 +106,7 @@ export const SwapInterface = () => {
             <span className="text-muted-foreground">To</span>
             <span className="text-muted-foreground">Balance: 0.00</span>
           </div>
-          <div className="flex gap-2">
+            <div className="flex gap-2">
             <div className="flex-1">
               <Input
                 type="number"
@@ -81,14 +115,16 @@ export const SwapInterface = () => {
                 onChange={(e) => setToAmount(e.target.value)}
                 className="text-lg h-12"
                 readOnly
+                disabled={!isConnected}
               />
             </div>
-            <Button variant="outline" className="h-12 px-4">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-gradient-shield"></div>
-                <span>USDC</span>
-              </div>
-            </Button>
+            <TokenSelector
+              selectedToken={toToken}
+              onTokenSelect={setToToken}
+              tokens={tokens}
+              label="Select Token"
+              disabled={!isConnected}
+            />
           </div>
         </div>
 
@@ -123,16 +159,28 @@ export const SwapInterface = () => {
         <Button 
           variant={mevProtection ? "shield" : "cosmic"} 
           className="w-full h-12 text-base font-semibold"
+          disabled={!isConnected || !fromToken || !toToken || !fromAmount}
+          onClick={() => {
+            if (quote && onSwap) {
+              onSwap(quote);
+            }
+          }}
         >
-          {mevProtection ? (
+          {!isConnected ? (
+            "Connect Wallet"
+          ) : !fromToken || !toToken ? (
+            "Select Tokens"
+          ) : !fromAmount ? (
+            "Enter Amount"
+          ) : mevProtection ? (
             <>
               <Shield className="w-4 h-4" />
-              Protected Swap
+              {isLoadingQuote ? "Getting Quote..." : "Protected Swap"}
             </>
           ) : (
             <>
               <Zap className="w-4 h-4" />
-              Instant Swap
+              {isLoadingQuote ? "Getting Quote..." : "Instant Swap"}
             </>
           )}
         </Button>
