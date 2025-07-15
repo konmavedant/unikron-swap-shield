@@ -4,6 +4,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Copy, ExternalLink, LogOut, Wallet } from "lucide-react";
 import { useState } from "react";
 import { toast } from "@/hooks/use-toast";
+import { useWalletStore } from "@/store/wallet";
+import { useDisconnect } from 'wagmi';
+import { useWallet } from '@solana/wallet-adapter-react';
 
 interface WalletInfoProps {
   address: string;
@@ -21,6 +24,27 @@ export const WalletInfo = ({
   onDisconnect 
 }: WalletInfoProps) => {
   const [showFull, setShowFull] = useState(false);
+  const { disconnect: storeDisconnect } = useWalletStore();
+  const { disconnect: evmDisconnect } = useDisconnect();
+  const { disconnect: solanaDisconnect } = useWallet();
+
+  const handleDisconnect = async () => {
+    try {
+      if (chainType === 'evm') {
+        evmDisconnect();
+      } else {
+        await solanaDisconnect();
+      }
+      storeDisconnect();
+      onDisconnect();
+      toast({
+        title: "Wallet Disconnected",
+        description: "Your wallet has been disconnected successfully",
+      });
+    } catch (error) {
+      console.error('Disconnect failed:', error);
+    }
+  };
 
   const formatAddress = (addr: string) => {
     if (showFull) return addr;
@@ -119,7 +143,7 @@ export const WalletInfo = ({
         <Button
           variant="outline"
           size="sm"
-          onClick={onDisconnect}
+          onClick={handleDisconnect}
           className="w-full flex items-center gap-2"
         >
           <LogOut className="w-4 h-4" />

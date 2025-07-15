@@ -3,6 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Wallet, Shield, Zap, ExternalLink } from "lucide-react";
+import { useAccount, useConnect, useDisconnect } from 'wagmi';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { useWalletStore } from "@/store/wallet";
+import { useEffect } from "react";
+import { toast } from "@/hooks/use-toast";
 
 interface WalletModalProps {
   open: boolean;
@@ -11,17 +16,76 @@ interface WalletModalProps {
 }
 
 export const WalletModal = ({ open, onClose, onConnect }: WalletModalProps) => {
-  const handleWalletConnect = async (walletType: string, chainType: 'evm' | 'solana') => {
-    // This would integrate with actual wallet adapters
-    console.log(`Connecting to ${walletType} on ${chainType}`);
-    
-    // Mock connection for now
-    const mockAddress = chainType === 'evm' 
-      ? '0x742d35Cc6635C0532925a3b8D94c9D0C' 
-      : 'DsVmA5hWGAnPs2htdZxdu4mYNMagZ8cFQc8kk5qCBbJ6';
-    
-    onConnect?.(mockAddress, chainType);
-    onClose();
+  // EVM wallet hooks
+  const { address: evmAddress, isConnected: evmConnected, chainId } = useAccount();
+  const { connect: evmConnect, connectors } = useConnect();
+  const { disconnect: evmDisconnect } = useDisconnect();
+
+  // Solana wallet hooks  
+  const { publicKey: solanaAddress, connected: solanaConnected, select, connect: solanaConnect, wallets } = useWallet();
+
+  // Global wallet store
+  const { connect: storeConnect, setConnecting } = useWalletStore();
+
+  // Handle EVM connection
+  useEffect(() => {
+    if (evmConnected && evmAddress) {
+      storeConnect(evmAddress, 'evm', chainId);
+      onConnect?.(evmAddress, 'evm');
+      onClose();
+      toast({
+        title: "Wallet Connected",
+        description: `Connected to ${evmAddress.slice(0, 6)}...${evmAddress.slice(-4)}`,
+      });
+    }
+  }, [evmConnected, evmAddress, chainId]);
+
+  // Handle Solana connection
+  useEffect(() => {
+    if (solanaConnected && solanaAddress) {
+      const address = solanaAddress.toString();
+      storeConnect(address, 'solana');
+      onConnect?.(address, 'solana');
+      onClose();
+      toast({
+        title: "Wallet Connected", 
+        description: `Connected to ${address.slice(0, 6)}...${address.slice(-4)}`,
+      });
+    }
+  }, [solanaConnected, solanaAddress]);
+
+  const handleEvmWalletConnect = async (connector: any) => {
+    try {
+      setConnecting(true);
+      await evmConnect({ connector });
+    } catch (error) {
+      console.error('EVM wallet connection failed:', error);
+      toast({
+        title: "Connection Failed",
+        description: "Failed to connect to EVM wallet",
+        variant: "destructive",
+      });
+      setConnecting(false);
+    }
+  };
+
+  const handleSolanaWalletConnect = async (walletName: string) => {
+    try {
+      setConnecting(true);
+      const wallet = wallets.find(w => w.adapter.name === walletName);
+      if (wallet) {
+        select(wallet.adapter.name);
+        await solanaConnect();
+      }
+    } catch (error) {
+      console.error('Solana wallet connection failed:', error);
+      toast({
+        title: "Connection Failed",
+        description: "Failed to connect to Solana wallet",
+        variant: "destructive",
+      });
+      setConnecting(false);
+    }
   };
 
   return (
@@ -56,33 +120,23 @@ export const WalletModal = ({ open, onClose, onConnect }: WalletModalProps) => {
             </div>
 
             <div className="space-y-2">
-              <Button
-                variant="outline"
-                className="w-full justify-between h-12"
-                onClick={() => handleWalletConnect('MetaMask', 'evm')}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center">
-                    🦊
+              {connectors.map((connector) => (
+                <Button
+                  key={connector.id}
+                  variant="outline"
+                  className="w-full justify-between h-12"
+                  onClick={() => handleEvmWalletConnect(connector)}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center">
+                      {connector.name === 'MetaMask' ? '🦊' : 
+                       connector.name === 'WalletConnect' ? '🔗' : '💼'}
+                    </div>
+                    {connector.name}
                   </div>
-                  MetaMask
-                </div>
-                <ExternalLink className="w-4 h-4" />
-              </Button>
-
-              <Button
-                variant="outline"
-                className="w-full justify-between h-12"
-                onClick={() => handleWalletConnect('WalletConnect', 'evm')}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
-                    🔗
-                  </div>
-                  WalletConnect
-                </div>
-                <ExternalLink className="w-4 h-4" />
-              </Button>
+                  <ExternalLink className="w-4 h-4" />
+                </Button>
+              ))}
             </div>
           </TabsContent>
 
@@ -96,33 +150,34 @@ export const WalletModal = ({ open, onClose, onConnect }: WalletModalProps) => {
             </div>
 
             <div className="space-y-2">
-              <Button
-                variant="outline"
-                className="w-full justify-between h-12"
-                onClick={() => handleWalletConnect('Phantom', 'solana')}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center">
-                    👻
+              {wallets.filter(wallet => wallet.readyState === 'Installed' || wallet.readyState === 'Loadable').map((wallet) => (
+                <Button
+                  key={wallet.adapter.name}
+                  variant="outline"
+                  className="w-full justify-between h-12"
+                  onClick={() => handleSolanaWalletConnect(wallet.adapter.name)}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center">
+                      {wallet.adapter.icon ? (
+                        <img src={wallet.adapter.icon} alt={wallet.adapter.name} className="w-8 h-8 rounded-full" />
+                      ) : (
+                        <span>{wallet.adapter.name === 'Phantom' ? '👻' : 
+                               wallet.adapter.name === 'Solflare' ? '☀️' : '💼'}</span>
+                      )}
+                    </div>
+                    {wallet.adapter.name}
                   </div>
-                  Phantom
+                  <ExternalLink className="w-4 h-4" />
+                </Button>
+              ))}
+              
+              {wallets.filter(wallet => wallet.readyState === 'Installed' || wallet.readyState === 'Loadable').length === 0 && (
+                <div className="text-center py-4 text-muted-foreground">
+                  <p className="text-sm">No Solana wallets detected.</p>
+                  <p className="text-xs mt-1">Please install Phantom or Solflare wallet.</p>
                 </div>
-                <ExternalLink className="w-4 h-4" />
-              </Button>
-
-              <Button
-                variant="outline"
-                className="w-full justify-between h-12"
-                onClick={() => handleWalletConnect('Solflare', 'solana')}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-yellow-500 flex items-center justify-center">
-                    ☀️
-                  </div>
-                  Solflare
-                </div>
-                <ExternalLink className="w-4 h-4" />
-              </Button>
+              )}
             </div>
           </TabsContent>
         </Tabs>

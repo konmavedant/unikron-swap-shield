@@ -6,19 +6,10 @@ import { ConnectWalletButton } from "@/components/wallet/ConnectWalletButton";
 import { WalletInfo } from "@/components/wallet/WalletInfo";
 import { useState } from "react";
 import { Token, ChainType } from "@/types";
+import { useWalletStore } from "@/store/wallet";
 
 const Index = () => {
-  const [walletState, setWalletState] = useState<{
-    address: string | null;
-    chainType: ChainType | null;
-    chainId?: number;
-    isConnected: boolean;
-  }>({
-    address: null,
-    chainType: null,
-    isConnected: false,
-  });
-
+  const { address, chainType, chainId, isConnected } = useWalletStore();
   const [selectedChain, setSelectedChain] = useState<ChainType>("evm");
 
   // Mock tokens - in real implementation, these would come from your API
@@ -44,21 +35,11 @@ const Index = () => {
   ];
 
   const handleWalletConnect = (address: string, chainType: ChainType) => {
-    setWalletState({
-      address,
-      chainType,
-      chainId: chainType === 'evm' ? 1 : undefined,
-      isConnected: true,
-    });
     setSelectedChain(chainType);
   };
 
   const handleWalletDisconnect = () => {
-    setWalletState({
-      address: null,
-      chainType: null,
-      isConnected: false,
-    });
+    // Wallet store handles the state reset
   };
 
   const handleSwap = (quote: any) => {
@@ -77,11 +58,11 @@ const Index = () => {
             <ChainSelector />
             
             <div className="flex justify-center">
-              {walletState.isConnected ? (
+              {isConnected ? (
                 <WalletInfo
-                  address={walletState.address!}
-                  chainType={walletState.chainType!}
-                  chainId={walletState.chainId}
+                  address={address!}
+                  chainType={chainType!}
+                  chainId={chainId}
                   balance="1.234"
                   onDisconnect={handleWalletDisconnect}
                 />
@@ -96,7 +77,7 @@ const Index = () => {
               chainType={selectedChain}
               tokens={mockTokens}
               onSwap={handleSwap}
-              isConnected={walletState.isConnected}
+              isConnected={isConnected}
             />
           </div>
         </div>
