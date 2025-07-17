@@ -7,6 +7,7 @@ import { Shield, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import { SwapQuote } from '@/types';
 import { UnikronApiService } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
+import { getCommitHash } from '@/utils/commitHash';
 
 interface SwapCommitRevealProps {
   quote: SwapQuote;
@@ -59,27 +60,19 @@ export const SwapCommitReveal = ({
     setError(null);
 
     try {
-      // Create the swap intent with commit phase
-      const swapRequest = {
-        inputToken: quote.inputToken.address,
-        outputToken: quote.outputToken.address,
-        inputAmount: quote.inputAmount,
-        minOutputAmount: quote.minOutputAmount,
-        slippage: quote.slippage,
-        user: userAddress,
-        deadline: Math.floor(Date.now() / 1000) + (20 * 60), // 20 minutes
-        quoteId: quote.quoteId,
-        config: {
-          slippage: quote.slippage,
-          deadline: 20,
-          mevProtection: true
-        }
-      };
+      // Generate commit hash for commit-reveal
+      const nonce = Date.now().toString();
+      const hash = getCommitHash(
+        quote.inputToken.address,
+        quote.outputToken.address,
+        quote.inputAmount,
+        nonce
+      );
 
-      const response = await UnikronApiService.createSwap(chainType, swapRequest);
-      
-      setCommitTxHash(response.tx);
-      setIntentId(response.intentId);
+      // Commit phase via backend
+      const response = await UnikronApiService.commitSwap(hash);
+      setCommitTxHash(response.txHash);
+      setIntentId(nonce); // Use nonce as intentId for reveal
       setState('committed');
       setTimeLeft(COMMIT_PHASE_DURATION);
 
@@ -87,7 +80,6 @@ export const SwapCommitReveal = ({
         title: "Commit Phase Started",
         description: "Your swap intent has been committed. Waiting for reveal phase...",
       });
-
     } catch (err) {
       console.error('Commit failed:', err);
       setError(err instanceof Error ? err.message : 'Commit phase failed');
@@ -102,20 +94,27 @@ export const SwapCommitReveal = ({
 
   const handleReveal = async () => {
     if (!intentId) return;
-
     setState('revealing');
     setError(null);
-
     try {
-      // Poll for swap completion
-      const result = await UnikronApiService.pollSwapStatus(
-        chainType, 
-        intentId, 
-        2000, // Poll every 2 seconds
-        120000 // 2 minute timeout
-      );
-
-      if (result.status === 'executed') {
+      // Reveal phase via backend
+      const revealRes = await UnikronApiService.revealSwap({
+        tokenIn: quote.inputToken.address,
+        tokenOut: quote.outputToken.address,
+        amountIn: quote.inputAmount,
+        nonce: intentId,
+      });
+      // Poll for swap status
+      let status = 'pending';
+      let attempts = 0;
+      while (status === 'pending' && attempts < 60) {
+        const statusRes = await UnikronApiService.getSwapStatus(revealRes.txHash);
+        status = statusRes.status;
+        if (status !== 'pending') break;
+        await new Promise(r => setTimeout(r, 2000));
+        attempts++;
+      }
+      if (status === 'success') {
         setState('completed');
         onSwapComplete(intentId);
         toast({
@@ -123,9 +122,8 @@ export const SwapCommitReveal = ({
           description: "Your swap has been executed successfully!",
         });
       } else {
-        throw new Error(`Swap failed with status: ${result.status}`);
+        throw new Error(`Swap failed with status: ${status}`);
       }
-
     } catch (err) {
       console.error('Reveal failed:', err);
       setError(err instanceof Error ? err.message : 'Reveal phase failed');

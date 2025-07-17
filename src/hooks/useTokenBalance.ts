@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Token, ChainType } from '@/types';
+import { Token } from '@/types';
 import { useAccount } from 'wagmi';
-import { useWallet } from '@solana/wallet-adapter-react';
+import { ethers } from 'ethers';
 
 interface TokenBalance {
   token: Token;
@@ -14,42 +14,38 @@ interface TokenBalance {
 
 interface UseTokenBalanceProps {
   token: Token | null;
-  chainType: ChainType;
   enabled?: boolean;
 }
 
-// Mock balance fetching - replace with actual implementation
 const fetchTokenBalance = async (
   token: Token,
-  userAddress: string,
-  chainType: ChainType
+  userAddress: string
 ): Promise<{ balance: string; usdValue?: number }> => {
-  // This would be replaced with actual RPC calls
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  // Mock data
-  const mockBalances: Record<string, string> = {
-    ETH: '2.5',
-    USDC: '1250.00',
-    SOL: '15.7',
-    USDT: '980.50'
-  };
-  
-  const balance = mockBalances[token.symbol] || '0.0';
-  const usdValue = parseFloat(balance) * (token.symbol === 'ETH' ? 3000 : token.symbol === 'SOL' ? 100 : 1);
-  
-  return { balance, usdValue };
+  try {
+    // Use ethers.js to fetch ERC20 balance
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const abi = ["function balanceOf(address) view returns (uint256)", "function decimals() view returns (uint8)"];
+    const contract = new ethers.Contract(token.address, abi, provider);
+    const [rawBalance, decimals] = await Promise.all([
+      contract.balanceOf(userAddress),
+      contract.decimals()
+    ]);
+    const balance = ethers.utils.formatUnits(rawBalance, decimals);
+    // Dummy USD value (replace with real price if available)
+    const usdValue = parseFloat(balance) * (token.symbol === 'ETH' ? 3000 : 1);
+    return { balance, usdValue };
+  } catch (e) {
+    return { balance: '0.0', usdValue: 0 };
+  }
 };
 
-export const useTokenBalance = ({ token, chainType, enabled = true }: UseTokenBalanceProps): TokenBalance => {
+export const useTokenBalance = ({ token, enabled = true }: UseTokenBalanceProps): TokenBalance => {
   const { address: evmAddress } = useAccount();
-  const { publicKey } = useWallet();
-  
-  const userAddress = chainType === 'evm' ? evmAddress : publicKey?.toBase58();
-  
+  const userAddress = evmAddress;
+
   const { data, isLoading, error } = useQuery({
-    queryKey: ['tokenBalance', token?.address, userAddress, chainType],
-    queryFn: () => fetchTokenBalance(token!, userAddress!, chainType),
+    queryKey: ['tokenBalance', token?.address, userAddress],
+    queryFn: () => fetchTokenBalance(token!, userAddress!),
     enabled: enabled && !!token && !!userAddress,
     refetchInterval: 10000, // Refetch every 10 seconds
     staleTime: 5000, // Consider data stale after 5 seconds
@@ -64,28 +60,24 @@ export const useTokenBalance = ({ token, chainType, enabled = true }: UseTokenBa
   };
 };
 
-// Hook for multiple token balances
-export const useTokenBalances = (tokens: Token[], chainType: ChainType) => {
+// Hook for multiple token balances (EVM only)
+export const useTokenBalances = (tokens: Token[]) => {
   const { address: evmAddress } = useAccount();
-  const { publicKey } = useWallet();
-  
-  const userAddress = chainType === 'evm' ? evmAddress : publicKey?.toBase58();
-  
+  const userAddress = evmAddress;
+
   const { data, isLoading, error } = useQuery({
-    queryKey: ['tokenBalances', tokens.map(t => t.address), userAddress, chainType],
+    queryKey: ['tokenBalances', tokens.map(t => t.address), userAddress],
     queryFn: async () => {
       if (!userAddress) return [];
-      
       const balances = await Promise.all(
         tokens.map(async (token) => {
-          const result = await fetchTokenBalance(token, userAddress, chainType);
+          const result = await fetchTokenBalance(token, userAddress);
           return {
             token,
             ...result,
           };
         })
       );
-      
       return balances;
     },
     enabled: !!userAddress && tokens.length > 0,

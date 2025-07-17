@@ -4,6 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Star, TrendingUp, TrendingDown, ExternalLink } from "lucide-react";
 import { TokenWithMetadata, ChainType } from "@/types";
 import { formatNumber } from "@/lib/utils";
+import { useState } from "react";
 
 interface TokenListItemProps {
   token: TokenWithMetadata;
@@ -24,6 +25,7 @@ export const TokenListItem = ({
   isPopular = false,
   isRecent = false,
 }: TokenListItemProps) => {
+  const [showSymbol, setShowSymbol] = useState(!token.logoURI);
   const handleSelect = () => {
     onSelect(token);
   };
@@ -57,22 +59,19 @@ export const TokenListItem = ({
           <div 
             className="w-10 h-10 rounded-full bg-gradient-cosmic flex items-center justify-center overflow-hidden"
           >
-            {token.logoURI ? (
+            {token.logoURI && !showSymbol ? (
               <img 
                 src={token.logoURI} 
                 alt={token.symbol} 
                 className="w-full h-full object-cover"
-                onError={(e) => {
-                  // Fallback to gradient with symbol
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
-                  target.nextElementSibling?.classList.remove('hidden');
-                }}
+                onError={() => setShowSymbol(true)}
               />
             ) : null}
-            <span className={`text-sm font-bold ${token.logoURI ? 'hidden' : ''}`}>
-              {token.symbol.charAt(0)}
-            </span>
+            {showSymbol && (
+              <span className="text-sm font-bold">
+                {token.symbol.charAt(0)}
+              </span>
+            )}
           </div>
           
           {/* Popular/Recent indicator */}
@@ -136,7 +135,7 @@ export const TokenListItem = ({
 
       {/* Balance and Chain Info */}
       <div className="text-right space-y-1">
-        {showBalance && token.balance && (
+        {showBalance && token.balance !== undefined && token.balance !== null && !isNaN(Number(token.balance)) && (
           <div className="text-sm font-medium">
             {formatNumber(parseFloat(token.balance), 4)}
           </div>
@@ -147,18 +146,19 @@ export const TokenListItem = ({
             {token.chainId ? getChainName(token.chainId) : 'Solana'}
           </Badge>
           
-          {/* Explorer link */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-            onClick={(e) => {
+          {/* Explorer link as a button for accessibility */}
+          <button
+            type="button"
+            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center bg-transparent border-none"
+            onClick={e => {
               e.stopPropagation();
               window.open(getExplorerUrl(), '_blank');
             }}
+            aria-label="View on explorer"
+            tabIndex={0}
           >
             <ExternalLink className="w-3 h-3" />
-          </Button>
+          </button>
         </div>
         
         {token.volume24h && token.volume24h > 0 && (
@@ -194,6 +194,5 @@ function getChainName(chainId: number): string {
     10: 'Optimism',
     8453: 'Base',
   };
-  
   return chainNames[chainId] || `Chain ${chainId}`;
 }

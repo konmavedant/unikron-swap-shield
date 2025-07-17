@@ -46,32 +46,26 @@ export const useSwapQuote = () => {
     setError(null);
 
     try {
-      const quoteRequest = {
-        inputToken: inputToken.address,
-        outputToken: outputToken.address,
-        inputAmount: debouncedInputAmount,
-        slippage: config.slippage,
-        user: 'user-placeholder', // This should come from wallet connection
-        config
-      };
-
+      // Always pass addresses as strings
       const newQuote = await measureAsync(
         'fetchQuote',
-        () => UnikronApiService.getQuote(chainType, quoteRequest),
-        { chainType, inputAmount: debouncedInputAmount }
+        () => UnikronApiService.getQuote(
+          inputToken.address,
+          outputToken.address,
+          debouncedInputAmount
+        ),
+        { inputAmount: debouncedInputAmount }
       );
-      
       setQuote(newQuote);
     } catch (error) {
       console.error('Failed to fetch quote:', error);
-      
       const appError = error instanceof Error 
         ? new AppError({
             type: ErrorType.API_ERROR,
             severity: ErrorSeverity.HIGH,
             message: error.message.includes('network') ? 'Network error while fetching quote' : 'Failed to fetch quote',
             retry: true,
-            metadata: { chainType, inputAmount: debouncedInputAmount }
+            metadata: { inputAmount: debouncedInputAmount }
           })
         : new AppError({
             type: ErrorType.UNKNOWN_ERROR,
@@ -79,24 +73,12 @@ export const useSwapQuote = () => {
             message: 'Failed to fetch quote',
             retry: true,
           });
-      
       handleError(appError);
       setError(appError.message);
     } finally {
       setLoadingQuote(false);
     }
-  }, [
-    chainType,
-    inputToken,
-    outputToken,
-    debouncedInputAmount,
-    config,
-    setQuote,
-    setLoadingQuote,
-    setError,
-    handleError,
-    measureAsync
-  ]);
+  }, [inputToken, outputToken, debouncedInputAmount, config, setQuote, setLoadingQuote, setError, handleError, measureAsync]);
 
   useEffect(() => {
     fetchQuote();

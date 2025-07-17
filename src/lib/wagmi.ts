@@ -3,7 +3,7 @@ import { mainnet, polygon, arbitrum, optimism, base } from 'wagmi/chains';
 
 export const wagmiConfig = getDefaultConfig({
   appName: 'UNIKRON',
-  projectId: import.meta.env.VITE_WALLET_CONNECT_PROJECT_ID || 'unikron-default-project-id',
+  projectId: 'fbab23fe8f44215275d52c133d358ab3', // Updated WalletConnect projectId
   chains: [mainnet, polygon, arbitrum, optimism, base],
   ssr: false,
 });
