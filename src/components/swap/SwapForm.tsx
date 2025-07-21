@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { ArrowDownUp, Shield, Zap, Settings } from "lucide-react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, memo } from "react";
 import { TokenSelector } from "./TokenSelector";
 import { SwapQuoteDisplay } from "./SwapQuoteDisplay";
 import { Token, SwapQuote, ChainType } from "@/types";
@@ -14,6 +14,7 @@ import { useSwapQuote } from "@/hooks/useSwapQuote";
 import { useSwapStore } from "@/store/swap";
 import { TokenBalanceDisplay } from "./TokenBalanceDisplay";
 import { useErrorHandler } from "@/hooks/useErrorHandler";
+import { useInputValidation } from "@/hooks/useInputValidation";
 
 interface SwapFormProps {
   tokens: Token[];
@@ -21,7 +22,7 @@ interface SwapFormProps {
   onPreview: () => void;
 }
 
-export const SwapForm = ({ 
+const SwapFormComponent = ({ 
   tokens, 
   onPreview,
   isConnected 
@@ -49,6 +50,7 @@ export const SwapForm = ({
 
   const { hasValidInputs } = useSwapQuote();
   const { handleError } = useErrorHandler();
+  const { validateAmount, validateSlippage, getError } = useInputValidation();
 
   // Update MEV protection in config
   useEffect(() => {
@@ -106,7 +108,11 @@ export const SwapForm = ({
                     min="0.1"
                     max="50"
                     value={config.slippage}
-                    onChange={(e) => setConfig({ slippage: parseFloat(e.target.value) || 0.5 })}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value) || 0.5;
+                      const result = validateSlippage('slippage', value);
+                      setConfig({ slippage: parseFloat(result.sanitizedValue) });
+                    }}
                     placeholder="Custom"
                   />
                 </div>
@@ -156,7 +162,10 @@ export const SwapForm = ({
                 type="number"
                 placeholder="0.0"
                 value={inputAmount}
-                onChange={(e) => setInputAmount(e.target.value)}
+                onChange={(e) => {
+                  const result = validateAmount('inputAmount', e.target.value);
+                  setInputAmount(result.sanitizedValue);
+                }}
                 className="text-lg h-12"
                 disabled={!isConnected}
               />
@@ -266,3 +275,5 @@ export const SwapForm = ({
     </Card>
   );
 };
+
+export const SwapForm = memo(SwapFormComponent);

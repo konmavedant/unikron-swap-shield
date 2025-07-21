@@ -2,7 +2,8 @@ import { Button } from "@/components/ui/button";
 import { Shield, Zap } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import unikronLogo from "@/assets/unikron-logo.png";
-export const Header = () => {
+import { memo } from "react";
+const HeaderComponent = () => {
   const location = useLocation();
   return <header className="flex items-center justify-between p-6 border-b border-border/50">
       <div className="flex items-center gap-8">
@@ -33,3 +34,5 @@ export const Header = () => {
       </div>
     </header>;
 };
+
+export const Header = memo(HeaderComponent);

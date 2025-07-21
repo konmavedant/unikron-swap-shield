@@ -2,7 +2,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Shield, Zap, Globe, ArrowRight } from "lucide-react";
 import cosmicBackground from "@/assets/cosmic-background.jpg";
-export const HeroSection = () => {
+import { memo } from "react";
+const HeroSectionComponent = () => {
   return <div className="relative min-h-[400px] flex items-center justify-center overflow-hidden rounded-2xl" style={{
     backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url(${cosmicBackground})`,
     backgroundSize: 'cover',
@@ -61,3 +62,5 @@ export const HeroSection = () => {
     }}></div>
     </div>;
 };
+
+export const HeroSection = memo(HeroSectionComponent);

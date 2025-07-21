@@ -3,6 +3,7 @@ import { useTokenBalance } from '@/hooks/useTokenBalance';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Wallet } from 'lucide-react';
+import { memo } from 'react';
 
 interface TokenBalanceDisplayProps {
   token: Token | null;
@@ -12,7 +13,7 @@ interface TokenBalanceDisplayProps {
   className?: string;
 }
 
-export const TokenBalanceDisplay = ({ 
+const TokenBalanceDisplayComponent = ({ 
   token, 
   chainType, 
   isConnected, 
@@ -77,3 +78,5 @@ export const TokenBalanceDisplay = ({
     </div>
   );
 };
+
+export const TokenBalanceDisplay = memo(TokenBalanceDisplayComponent);

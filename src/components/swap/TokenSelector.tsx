@@ -6,10 +6,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, ChevronDown, Star, Clock, AlertCircle, Loader2 } from "lucide-react";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, memo } from "react";
 import { Token, TokenWithMetadata, ChainType } from "@/types";
 import { useTokenData } from "@/hooks/useTokenData";
 import { TokenListItem, TokenListItemSkeleton } from "./TokenListItem";
+import { LazyImage } from "@/components/ui/lazy-image";
 
 interface TokenSelectorProps {
   selectedToken?: Token;
@@ -22,7 +23,7 @@ interface TokenSelectorProps {
   placeholder?: string;
 }
 
-export const TokenSelector = ({ 
+const TokenSelectorComponent = ({ 
   selectedToken, 
   onTokenSelect, 
   chainType,
@@ -109,10 +110,11 @@ export const TokenSelector = ({
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-full bg-gradient-cosmic flex items-center justify-center overflow-hidden">
               {selectedToken.logoURI ? (
-                <img 
+                <LazyImage 
                   src={selectedToken.logoURI} 
                   alt={selectedToken.symbol}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover rounded-full"
+                  fallbackSrc={`https://via.placeholder.com/24/6366f1/ffffff?text=${selectedToken.symbol.charAt(0)}`}
                 />
               ) : (
                 <span className="text-xs font-bold">
@@ -306,3 +308,5 @@ export const TokenSelector = ({
     </>
   );
 };
+
+export const TokenSelector = memo(TokenSelectorComponent);

@@ -4,6 +4,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Star, TrendingUp, TrendingDown, ExternalLink } from "lucide-react";
 import { TokenWithMetadata, ChainType } from "@/types";
 import { formatNumber } from "@/lib/utils";
+import { LazyImage } from "@/components/ui/lazy-image";
+import { memo } from "react";
 
 interface TokenListItemProps {
   token: TokenWithMetadata;
@@ -15,7 +17,7 @@ interface TokenListItemProps {
   isRecent?: boolean;
 }
 
-export const TokenListItem = ({
+const TokenListItemComponent = ({
   token,
   onSelect,
   chainType,
@@ -58,16 +60,11 @@ export const TokenListItem = ({
             className="w-10 h-10 rounded-full bg-gradient-cosmic flex items-center justify-center overflow-hidden"
           >
             {token.logoURI ? (
-              <img 
+              <LazyImage 
                 src={token.logoURI} 
                 alt={token.symbol} 
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  // Fallback to gradient with symbol
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
-                  target.nextElementSibling?.classList.remove('hidden');
-                }}
+                className="w-full h-full object-cover rounded-full"
+                fallbackSrc={`https://via.placeholder.com/40/6366f1/ffffff?text=${token.symbol.charAt(0)}`}
               />
             ) : null}
             <span className={`text-sm font-bold ${token.logoURI ? 'hidden' : ''}`}>
@@ -197,3 +194,5 @@ function getChainName(chainId: number): string {
   
   return chainNames[chainId] || `Chain ${chainId}`;
 }
+
+export const TokenListItem = memo(TokenListItemComponent);

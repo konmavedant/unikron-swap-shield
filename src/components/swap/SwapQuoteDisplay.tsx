@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TrendingUp, TrendingDown, ArrowRight, Clock, Zap } from "lucide-react";
 import { SwapQuote } from "@/types";
+import { memo } from "react";
 
 interface SwapQuoteDisplayProps {
   quote: SwapQuote | null;
@@ -10,7 +11,7 @@ interface SwapQuoteDisplayProps {
   mevProtection: boolean;
 }
 
-export const SwapQuoteDisplay = ({ quote, isLoading, mevProtection }: SwapQuoteDisplayProps) => {
+const SwapQuoteDisplayComponent = ({ quote, isLoading, mevProtection }: SwapQuoteDisplayProps) => {
   if (isLoading) {
     return (
       <Card className="w-full">
@@ -148,3 +149,5 @@ export const SwapQuoteDisplay = ({ quote, isLoading, mevProtection }: SwapQuoteD
     </Card>
   );
 };
+
+export const SwapQuoteDisplay = memo(SwapQuoteDisplayComponent);
