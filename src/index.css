@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -8,97 +9,90 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 215 28% 6%;
+    --background: 220 30% 8%;
     --foreground: 210 40% 98%;
 
-    --card: 215 30% 9%;
+    --card: 220 32% 12%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 215 30% 9%;
+    --popover: 220 32% 12%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 240 100% 70%;
-    --primary-foreground: 215 28% 6%;
+    --primary: 210 100% 28%;
+    --primary-foreground: 210 40% 98%;
 
-    --secondary: 217 32% 15%;
+    --secondary: 220 35% 18%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 217 32% 15%;
+    --muted: 220 35% 18%;
     --muted-foreground: 215 20% 65%;
 
     --accent: 185 100% 60%;
-    --accent-foreground: 215 28% 6%;
+    --accent-foreground: 220 30% 8%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217 32% 17%;
-    --input: 217 32% 17%;
-    --ring: 240 100% 70%;
+    --border: 220 35% 20%;
+    --input: 220 35% 20%;
+    --ring: 210 100% 28%;
 
-    /* UNIKRON Brand Colors */
-    --cosmic-primary: 240 100% 70%;
-    --cosmic-secondary: 260 80% 65%;
+    /* UNIKRON Brand Colors - Updated to Pantone 2945C inspired */
+    --cosmic-primary: 210 100% 28%;
+    --cosmic-secondary: 220 80% 35%;
     --shield-cyan: 185 100% 60%;
     --shield-glow: 185 100% 80%;
     
     /* Gradients */
-    --gradient-cosmic: linear-gradient(135deg, hsl(240 100% 70%), hsl(260 80% 65%));
+    --gradient-cosmic: linear-gradient(135deg, hsl(210 100% 28%), hsl(220 80% 35%));
     --gradient-shield: linear-gradient(135deg, hsl(185 100% 60%), hsl(200 100% 70%));
     --gradient-rainbow: linear-gradient(135deg, hsl(0 100% 70%), hsl(45 100% 70%), hsl(120 100% 70%), hsl(240 100% 70%));
-    --gradient-background: linear-gradient(180deg, hsl(215 28% 6%), hsl(217 32% 8%));
+    --gradient-background: linear-gradient(180deg, hsl(220 30% 8%), hsl(220 32% 10%));
     
     /* Effects */
-    --glow-primary: 0 0 20px hsl(240 100% 70% / 0.3);
+    --glow-primary: 0 0 20px hsl(210 100% 28% / 0.3);
     --glow-shield: 0 0 15px hsl(185 100% 60% / 0.4);
-    --shadow-card: 0 10px 30px hsl(215 28% 3% / 0.5);
+    --shadow-card: 0 10px 30px hsl(220 30% 5% / 0.5);
 
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
-
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 220 30% 8%;
     --foreground: 210 40% 98%;
 
-    --card: 222.2 84% 4.9%;
+    --card: 220 32% 12%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 222.2 84% 4.9%;
+    --popover: 220 32% 12%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 210 100% 28%;
+    --primary-foreground: 210 40% 98%;
 
-    --secondary: 217.2 32.6% 17.5%;
+    --secondary: 220 35% 18%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 220 35% 18%;
+    --muted-foreground: 215 20% 65%;
 
-    --accent: 217.2 32.6% 17.5%;
+    --accent: 220 35% 18%;
     --accent-foreground: 210 40% 98%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
+    --border: 220 35% 20%;
+    --input: 220 35% 20%;
     --ring: 212.7 26.8% 83.9%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;

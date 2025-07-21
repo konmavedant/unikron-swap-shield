@@ -1,14 +1,17 @@
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Shield, Zap, Globe, ArrowRight } from "lucide-react";
 import cosmicBackground from "@/assets/cosmic-background.jpg";
 import { memo } from "react";
+
 const HeroSectionComponent = () => {
-  return <div className="relative min-h-[400px] flex items-center justify-center overflow-hidden rounded-2xl" style={{
-    backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url(${cosmicBackground})`,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center'
-  }}>
+  return (
+    <div className="relative min-h-[400px] flex items-center justify-center overflow-hidden rounded-2xl" style={{
+      backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url(${cosmicBackground})`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center'
+    }}>
       <div className="absolute inset-0 bg-gradient-background/80"></div>
       
       <div className="relative text-center space-y-6 max-w-4xl mx-auto px-6">
@@ -26,20 +29,25 @@ const HeroSectionComponent = () => {
         </h1>
         
         <p className="text-xl md:text-2xl text-foreground/90 max-w-2xl mx-auto">
-          The next-generation DEX aggregator with commit-reveal MEV protection 
-          across <span className="text-shield-cyan font-semibold">EVM</span> and{" "}
-          <span className="text-cosmic-secondary font-semibold">Solana</span> chains
+          Professional-grade DeFi infrastructure with institutional-level{" "}
+          <span className="text-shield-cyan font-semibold">MEV protection</span> and{" "}
+          <span className="text-cosmic-secondary font-semibold">cross-chain execution</span>
         </p>
         
         <div className="flex flex-wrap justify-center gap-4 text-sm">
           <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-card/20 border border-border/30">
             <Shield className="w-4 h-4 text-shield-cyan" />
-            <span>MEV Protection</span>
+            <span>Commit-Reveal Protocol</span>
           </div>
           
           <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-card/20 border border-border/30">
             <Zap className="w-4 h-4 text-primary" />
-            <span>Best Rates</span>
+            <span>Optimal Execution</span>
+          </div>
+          
+          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-card/20 border border-border/30">
+            <Globe className="w-4 h-4 text-cosmic-secondary" />
+            <span>Cross-Chain Ready</span>
           </div>
         </div>
         
@@ -58,9 +66,10 @@ const HeroSectionComponent = () => {
       {/* Animated glow effects */}
       <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-cosmic-primary/20 rounded-full blur-3xl animate-pulse"></div>
       <div className="absolute bottom-1/4 right-1/4 w-40 h-40 bg-shield-cyan/20 rounded-full blur-3xl animate-pulse" style={{
-      animationDelay: '1s'
-    }}></div>
-    </div>;
+        animationDelay: '1s'
+      }}></div>
+    </div>
+  );
 };
 
 export const HeroSection = memo(HeroSectionComponent);
