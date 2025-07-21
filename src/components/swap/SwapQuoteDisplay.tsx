@@ -22,7 +22,7 @@ const SwapQuoteDisplayComponent = ({
 }: SwapQuoteDisplayProps) => {
   if (isLoading) {
     return (
-      <div className="space-y-4">
+      <div className="w-full space-y-3">
         <Card className="w-full">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm">Quote Details</CardTitle>
@@ -37,14 +37,18 @@ const SwapQuoteDisplayComponent = ({
         </Card>
         
         {showMevVisuals && (
-          <SlippageHistogram isLoading={true} />
+          <SlippageHistogram isLoading={true} className="mt-3" />
         )}
       </div>
     );
   }
 
   if (!quote) {
-    return showMevVisuals ? <SlippageHistogram /> : null;
+    return showMevVisuals ? (
+      <div className="w-full">
+        <SlippageHistogram />
+      </div>
+    ) : null;
   }
 
   const priceImpactColor = quote.priceImpact > 5 
@@ -54,14 +58,14 @@ const SwapQuoteDisplayComponent = ({
     : "text-green-500";
 
   return (
-    <div className="space-y-4">
+    <div className="w-full space-y-3">
       <Card className="w-full">
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <CardTitle className="text-sm">Quote Details</CardTitle>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {mevProtection && (
-                <Badge variant="outline" className="text-shield-cyan border-shield-cyan/50">
+                <Badge variant="outline" className="text-shield-cyan border-shield-cyan/50 text-xs">
                   Protected
                 </Badge>
               )}
@@ -75,7 +79,7 @@ const SwapQuoteDisplayComponent = ({
           </div>
         </CardHeader>
         
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3">
           {/* Exchange Rate */}
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Rate</span>
@@ -104,9 +108,9 @@ const SwapQuoteDisplayComponent = ({
           </div>
 
           {/* Route */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-start justify-between">
             <span className="text-sm text-muted-foreground">Route</span>
-            <div className="flex items-center gap-1 text-sm">
+            <div className="flex items-center gap-1 text-sm flex-wrap max-w-[60%] justify-end">
               {quote.route.map((step, index) => (
                 <div key={index} className="flex items-center gap-1">
                   <span className="text-xs bg-secondary/50 px-1.5 py-0.5 rounded">
@@ -155,7 +159,7 @@ const SwapQuoteDisplayComponent = ({
 
           {/* MEV Protection Info */}
           {mevProtection && (
-            <div className="mt-4 p-3 rounded-lg bg-shield-cyan/5 border border-shield-cyan/20">
+            <div className="mt-3 p-3 rounded-lg bg-shield-cyan/5 border border-shield-cyan/20">
               <div className="flex items-center gap-2 mb-1">
                 <Clock className="w-3 h-3 text-shield-cyan" />
                 <span className="text-xs font-medium text-shield-cyan">
@@ -173,7 +177,7 @@ const SwapQuoteDisplayComponent = ({
 
       {/* MEV Analytics */}
       {showMevVisuals && (
-        <SlippageHistogram />
+        <SlippageHistogram className="mt-3" />
       )}
     </div>
   );

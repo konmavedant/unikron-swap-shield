@@ -50,16 +50,16 @@ const SlippageHistogramComponent = ({
 
   if (isLoading) {
     return (
-      <Card className={className}>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="w-5 h-5 text-shield-cyan" />
+      <Card className={`w-full ${className}`}>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <Shield className="w-4 h-4 text-shield-cyan" />
             Slippage Distribution
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="h-64 flex items-center justify-center">
-            <div className="text-muted-foreground">Loading slippage data...</div>
+        <CardContent className="pb-4">
+          <div className="h-48 flex items-center justify-center">
+            <div className="text-muted-foreground text-sm">Loading slippage data...</div>
           </div>
         </CardContent>
       </Card>
@@ -67,15 +67,15 @@ const SlippageHistogramComponent = ({
   }
 
   return (
-    <Card className={className}>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="w-5 h-5 text-shield-cyan" />
+    <Card className={`w-full ${className}`}>
+      <CardHeader className="pb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <Shield className="w-4 h-4 text-shield-cyan" />
             Slippage Distribution
           </CardTitle>
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary" className="text-shield-cyan">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge variant="secondary" className="text-shield-cyan text-xs">
               {protectedPercentage.toFixed(1)}% Protected
             </Badge>
             <Badge variant="outline" className="text-xs">
@@ -85,59 +85,64 @@ const SlippageHistogramComponent = ({
         </div>
       </CardHeader>
       
-      <CardContent>
-        <ChartContainer config={chartConfig} className="h-64">
-          <BarChart data={data}>
-            <XAxis 
-              dataKey="range" 
-              tick={{ fontSize: 12 }}
-              axisLine={false}
-              tickLine={false}
-            />
-            <YAxis 
-              tick={{ fontSize: 12 }}
-              axisLine={false}
-              tickLine={false}
-            />
-            <ChartTooltip
-              content={
-                <ChartTooltipContent 
-                  formatter={(value, name) => [
-                    `${value} swaps`,
-                    name === 'protected' ? 'MEV Protected' : 'Unprotected'
-                  ]}
+      <CardContent className="pb-4">
+        <div className="w-full">
+          <ChartContainer config={chartConfig} className="h-48 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+                <XAxis 
+                  dataKey="range" 
+                  tick={{ fontSize: 10 }}
+                  axisLine={false}
+                  tickLine={false}
+                  interval={0}
                 />
-              }
-            />
-            <Bar 
-              dataKey="protected" 
-              stackId="a" 
-              fill="var(--color-protected)"
-              radius={[0, 0, 4, 4]}
-            />
-            <Bar 
-              dataKey="unprotected" 
-              stackId="a" 
-              fill="var(--color-unprotected)"
-              radius={[4, 4, 0, 0]}
-            />
-          </BarChart>
-        </ChartContainer>
+                <YAxis 
+                  tick={{ fontSize: 10 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent 
+                      formatter={(value, name) => [
+                        `${value} swaps`,
+                        name === 'protected' ? 'MEV Protected' : 'Unprotected'
+                      ]}
+                    />
+                  }
+                />
+                <Bar 
+                  dataKey="protected" 
+                  stackId="a" 
+                  fill="var(--color-protected)"
+                  radius={[0, 0, 2, 2]}
+                />
+                <Bar 
+                  dataKey="unprotected" 
+                  stackId="a" 
+                  fill="var(--color-unprotected)"
+                  radius={[2, 2, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartContainer>
+        </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-4">
+        <div className="mt-3 grid grid-cols-2 gap-3">
           <div className="flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-green-500" />
-            <div>
-              <p className="text-sm font-medium">Low Slippage</p>
+            <TrendingUp className="w-3 h-3 text-green-500 flex-shrink-0" />
+            <div className="min-w-0">
+              <p className="text-xs font-medium">Low Slippage</p>
               <p className="text-xs text-muted-foreground">
                 {((data[0].count + data[1].count) / totalTransactions * 100).toFixed(1)}% of swaps
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <TrendingDown className="w-4 h-4 text-red-500" />
-            <div>
-              <p className="text-sm font-medium">High Slippage</p>
+            <TrendingDown className="w-3 h-3 text-red-500 flex-shrink-0" />
+            <div className="min-w-0">
+              <p className="text-xs font-medium">High Slippage</p>
               <p className="text-xs text-muted-foreground">
                 {((data[4].count + data[5].count) / totalTransactions * 100).toFixed(1)}% of swaps
               </p>
